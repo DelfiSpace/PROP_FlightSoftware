@@ -1,5 +1,5 @@
 # PROP_FlightSoftware
-This folder contains the flight software for the Delfi-PQ ADCS board.
+This folder contains the flight software for the Delfi-PQ uPropulsion board.
 
 ## Requirements
 
