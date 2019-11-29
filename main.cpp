@@ -120,10 +120,10 @@ void main(void)
     I2Cinternal.begin();
 
     // initialize the shunt resistor
-    powerBus.setShuntResistor(0.04);
-    valveHold.setShuntResistor(0.04);
-    valveSpike.setShuntResistor(0.04);
-    heaters.setShuntResistor(0.04);
+    powerBus.setShuntResistor(40);
+    valveHold.setShuntResistor(40);
+    valveSpike.setShuntResistor(40);
+    heaters.setShuntResistor(40);
 
     temp.init();
 
