@@ -14,31 +14,31 @@
 class MicroResistojetHandler
 {
     /* Timer_A UpDown Configuration Parameter */
-    Timer_A_UpDownModeConfig upDownConfig =
+    Timer_A_UpModeConfig upConfig =
     {
-        TIMER_A_CLOCKSOURCE_SMCLK,              // SMCLK Clock SOurce
-        TIMER_A_CLOCKSOURCE_DIVIDER_1,          // SMCLK/1 = 3MHz
+        TIMER_A_CLOCKSOURCE_ACLK,               // ACLK Clock SOurce
+        TIMER_A_CLOCKSOURCE_DIVIDER_1,          // ACLK
         0,                                      // tick period
         TIMER_A_TAIE_INTERRUPT_DISABLE,         // Disable Timer interrupt
         TIMER_A_CCIE_CCR0_INTERRUPT_DISABLE,    // Disable CCR0 interrupt
         TIMER_A_DO_CLEAR                        // Clear value
     };
 
-    /* Timer_A Compare Configuration Parameter  (PWM1) */
-    Timer_A_CompareModeConfig compareConfig_PWM1 =
+    /* Timer_A Compare Configuration Parameter  (PWMSpike) */
+    Timer_A_CompareModeConfig compareConfig_PWMSpike =
     {
-        TIMER_A_CAPTURECOMPARE_REGISTER_1,          // Use CCR1
+        TIMER_A_CAPTURECOMPARE_REGISTER_3,          // Use CCR3
         TIMER_A_CAPTURECOMPARE_INTERRUPT_DISABLE,   // Disable CCR interrupt
-        TIMER_A_OUTPUTMODE_TOGGLE_SET,              // Toggle output but
+        TIMER_A_OUTPUTMODE_RESET_SET,               // Toggle output but
         0                                           // Duty Cycle
     };
 
-    /* Timer_A Compare Configuration Parameter (PWM2) */
-    Timer_A_CompareModeConfig compareConfig_PWM2 =
+    /* Timer_A Compare Configuration Parameter (PWMHold) */
+    Timer_A_CompareModeConfig compareConfig_PWMHold =
     {
-        TIMER_A_CAPTURECOMPARE_REGISTER_2,          // Use CCR2
+        TIMER_A_CAPTURECOMPARE_REGISTER_4,          // Use CCR4
         TIMER_A_CAPTURECOMPARE_INTERRUPT_DISABLE,   // Disable CCR interrupt
-        TIMER_A_OUTPUTMODE_TOGGLE_SET,              // Toggle output but
+        TIMER_A_OUTPUTMODE_RESET_SET,               // Toggle output but
         0                                           // Duty Cycle
     };
 

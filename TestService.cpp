@@ -12,9 +12,8 @@ extern DSerial serial;
 extern MicroResistojetHandler lpm, vlm;
 
 /* Application Defines */
-#define TIMER_PERIOD 127
-#define DUTY_CYCLE1 32
-#define DUTY_CYCLE2 96
+#define TIMER_PERIOD 1000000
+#define TIME_SPIKE 500
 
 bool TestService::process(PQ9Frame &command, PQ9Bus &interface, PQ9Frame &workingBuffer)
 {
@@ -23,12 +22,13 @@ bool TestService::process(PQ9Frame &command, PQ9Bus &interface, PQ9Frame &workin
         serial.println("TestService");
 
         MicroResistojetHandler *mr;
-        if (command.getPayload()[1] == 1)
+        if (command.getPayload()[2] == 1)
         {
-            serial.print("LPM - ");
+            serial.println("LPM - Not working");
+            return true;
             mr = &lpm;
         }
-        else if (command.getPayload()[1] == 2)
+        else if (command.getPayload()[2] == 2)
         {
             serial.print("VLM - ");
             mr = &vlm;
@@ -38,25 +38,24 @@ bool TestService::process(PQ9Frame &command, PQ9Bus &interface, PQ9Frame &workin
             return true;
         }
 
-        const unsigned char val = command.getPayload()[2];
+        const unsigned char val = command.getPayload()[3];
         if (val == 0)
         {
             mr->stopMR();
             serial.println("Stopped");
         }
-        else if (val <= DUTY_CYCLE1 && ((val&(val-1)) == 0))
+        else if (val <= 10)
         {
             const auto timerPeriod = TIMER_PERIOD/val;
-            const auto dutyCycle1 = DUTY_CYCLE1/val;
-            const auto dutyCycle2 = DUTY_CYCLE2/val;
-            mr->startMR(timerPeriod, dutyCycle1, dutyCycle2);
+            const auto time_hold = (timerPeriod/2);
+            mr->startMR(timerPeriod, TIME_SPIKE, time_hold);
 
             serial.print("Started with timer period ");
             serial.print(timerPeriod, DEC);
-            serial.print(" and duty cycles ");
-            serial.print(dutyCycle1, DEC);
-            serial.print(" and ");
-            serial.print(dutyCycle2, DEC);
+            serial.print(" and spike time ");
+            serial.print(TIME_SPIKE, DEC);
+            serial.print(" and hold time ");
+            serial.print(time_hold, DEC);
             serial.println();
         }
         else
