@@ -24,14 +24,15 @@ bool TestService::process(PQ9Frame &command, PQ9Bus &interface, PQ9Frame &workin
         MicroResistojetHandler *mr;
         if (command.getPayload()[2] == 1)
         {
-            serial.println("LPM - Not working");
-            return true;
+            serial.print("LPM - ");
             mr = &lpm;
         }
         else if (command.getPayload()[2] == 2)
         {
             serial.print("VLM - ");
             mr = &vlm;
+            serial.println("Not working");
+            return true;
         }
         else
         {
