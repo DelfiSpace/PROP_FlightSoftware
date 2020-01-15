@@ -15,7 +15,7 @@ extern MicroResistojetHandler lpm, vlm;
 #define TIMER_PERIOD 1000000
 #define TIME_SPIKE 500
 
-bool TestService::process(PQ9Frame &command, DataBus &interface, PQ9Frame &workingBuffer)
+bool TestService::process(DataFrame &command, DataBus &interface, DataFrame &workingBuffer)
 {
     if (command.getPayload()[0] == 0)
     {

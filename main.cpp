@@ -32,7 +32,7 @@ TestService test;
 Service* services[] = { &ping, &reset, &hk, &SWUpdate, &test };
 
 // PROP board tasks
-PQ9CommandHandler cmdHandler(pq9bus, services, 5);
+CommandHandler<PQ9Frame> cmdHandler(pq9bus, services, 5);
 PeriodicTask timerTask(FCLOCK, periodicTask);
 Task* tasks[] = { &cmdHandler, &timerTask };
 
@@ -40,7 +40,7 @@ Task* tasks[] = { &cmdHandler, &timerTask };
 unsigned long uptime = 0;
 
 // TODO: remove when bug in CCS has been solved
-void kickWatchdog(PQ9Frame &newFrame)
+void kickWatchdog(DataFrame &newFrame)
 {
     cmdHandler.received(newFrame);
 }
