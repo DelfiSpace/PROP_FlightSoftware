@@ -24,8 +24,7 @@ bool TestService::process(DataFrame &command, DataBus &interface, DataFrame &wor
         MicroResistojetHandler *mr;
         if (command.getPayload()[2] == 1)
         {
-            serial.println("LPM - Not working");
-            return true;
+            serial.print("LPM - ");
             mr = &lpm;
         }
         else if (command.getPayload()[2] == 2)
