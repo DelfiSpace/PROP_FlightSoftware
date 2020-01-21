@@ -29,6 +29,7 @@
 #include "SoftwareUpdateService.h"
 #include "TestService.h"
 #include "MicroResistojetHandler.h"
+#include "PeriodicTaskNotifier.h"
 
 #define FCLOCK 48000000
 
