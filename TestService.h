@@ -19,7 +19,7 @@
 
 class TestService: public Service
 {
-     bool operatePropulsion(DataFrame &command);
+     bool operatePropulsion(DataMessage &command);
  public:
      virtual bool process( DataMessage &command, DataMessage &workingBbuffer );
 };

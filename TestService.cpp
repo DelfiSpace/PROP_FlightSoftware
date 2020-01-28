@@ -11,7 +11,7 @@
 extern DSerial serial;
 extern MicroResistojetHandler lpm, vlm;
 
-bool TestService::operatePropulsion(DataFrame &command)
+bool TestService::operatePropulsion(DataMessage &command)
 {
 
     if (command.getPayload()[1] != TEST_REQUEST)
@@ -94,12 +94,9 @@ bool TestService::process(DataMessage &command, DataMessage &workingBuffer)
 {
     if (command.getPayload()[0] == 0)
     {
-        workingBuffer.setDestination(command.getSource());
-        workingBuffer.setSource(interface.getAddress());
-        workingBuffer.setPayloadSize(2);
+        workingBuffer.setSize(2);
         workingBuffer.getPayload()[0] = TEST_SERVICE;
         workingBuffer.getPayload()[1] = operatePropulsion(command) ? TEST_RESPONSE : TEST_ERROR;
-        //interface.transmit(workingBuffer);
         return true;
     }
     return false;
