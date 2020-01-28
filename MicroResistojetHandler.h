@@ -24,15 +24,6 @@ class MicroResistojetHandler
         TIMER_A_DO_CLEAR                        // Clear value
     };
 
-    /* Timer_A Compare Configuration Parameter  (PWMSpike) */
-    Timer_A_CompareModeConfig compareConfig_PWMSpike =
-    {
-        TIMER_A_CAPTURECOMPARE_REGISTER_3,          // Use CCR3
-        TIMER_A_CAPTURECOMPARE_INTERRUPT_DISABLE,   // Disable CCR interrupt
-        TIMER_A_OUTPUTMODE_RESET_SET,               // Toggle output but
-        0                                           // Duty Cycle
-    };
-
     /* Timer_A Compare Configuration Parameter (PWMHold) */
     Timer_A_CompareModeConfig compareConfig_PWMHold =
     {
@@ -42,20 +33,31 @@ class MicroResistojetHandler
         0                                           // Duty Cycle
     };
 
+    /* Timer_A Compare Configuration Parameter  (PWMSpike) */
+    Timer_A_CompareModeConfig compareConfig_PWMSpike =
+    {
+        TIMER_A_CAPTURECOMPARE_REGISTER_3,          // Use CCR3
+        TIMER_A_CAPTURECOMPARE_INTERRUPT_DISABLE,   // Disable CCR interrupt
+        TIMER_A_OUTPUTMODE_RESET_SET,               // Toggle output but
+        0                                           // Duty Cycle
+    };
+
+    void stopMR();
+
  protected:
      const unsigned long MRIPort;
      const unsigned long MRIPinHeat;
      const unsigned long MRIPinSpike;
      const unsigned long MRIPinHold;
 
-     void startValve(uint_fast16_t timerPeriod, uint_fast16_t dutyCycle1, uint_fast16_t dutyCycle2);
-     void stopValve();
+     void startValve(uint_fast16_t timerPeriod, uint_fast16_t time_hold, uint_fast16_t time_spike);
 
  public:
      MicroResistojetHandler( const unsigned long port, const unsigned long pinHeat,
                              const unsigned long pinSpike, const unsigned long pinHold );
-     void startMR(uint_fast16_t timerPeriod, uint_fast16_t dutyCycle1, uint_fast16_t dutyCycle2);
-     void stopMR();
+     void startMR(uint_fast16_t time_work, uint_fast16_t delayBeforeValve, uint_fast16_t timerPeriod, uint_fast16_t time_hold, uint_fast16_t time_spike);
+     static int stopActiveMR(const MicroResistojetHandler *isThis);
+     static void init();
 };
 
 #endif /* MICRORESISTOJETHANDLER_H_ */
