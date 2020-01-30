@@ -9,7 +9,6 @@
 #define MICRORESISTOJETHANDLER_H_
 
 #include <driverlib.h>
-#include "DSerial.h"
 
 class MicroResistojetHandler
 {
@@ -61,22 +60,44 @@ class MicroResistojetHandler
         TIMER_A_CCIE_CCR0_INTERRUPT_DISABLE,    // Disable CCR0 interrupt
         TIMER_A_DO_CLEAR                        // Clear value
     };
+
+    static void _handler_stop_active_MR();
     static void _handler_after_delay();
-    void stopMR();
+    bool stopMR();
 
-    static MicroResistojetHandler * activeMR;
+    static volatile MicroResistojetHandler * activeMR;
 
- protected:
-     const unsigned long MRIPort;
-     const unsigned long MRIPinHeat;
-     const unsigned long MRIPinSpike;
-     const unsigned long MRIPinHold;
+    protected:
+        const char * MRIName;
+        const unsigned long MRIPort;
+        const unsigned long MRIPinHeat;
+        const unsigned long MRIPinSpike;
+        const unsigned long MRIPinHold;
+        const uint32_t MRITimerOutput;
+        const uint32_t MRITimerTime;
 
- public:
-     MicroResistojetHandler( const unsigned long port, const unsigned long pinHeat,
-                             const unsigned long pinSpike, const unsigned long pinHold );
-     void startMR(uint_fast16_t time_work, uint_fast16_t duty_cycle_heat, uint_fast16_t delayBeforeValve, uint_fast16_t timerPeriod, uint_fast16_t time_hold, uint_fast16_t time_spike);
-     static void stopActiveMR();
+    public:
+        struct params {
+            uint_fast16_t time_work;
+            uint_fast16_t time_before;
+            uint_fast16_t duty_c_heat;
+            uint_fast16_t timerPeriod;
+            uint_fast16_t time_hold;
+            uint_fast16_t time_spike;
+        };
+
+        MicroResistojetHandler( const char * name,
+                                const unsigned long port, const unsigned long pinHeat,
+                                const unsigned long pinSpike, const unsigned long pinHold,
+                                const uint32_t timerOutput, const uint32_t timerTime);
+
+        ~MicroResistojetHandler();
+
+        bool startMR(struct params c);
+
+        static bool stopActiveMR();
+
+        const char * getName();
 };
 
 #endif /* MICRORESISTOJETHANDLER_H_ */

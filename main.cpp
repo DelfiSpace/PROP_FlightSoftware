@@ -5,8 +5,13 @@
 DWire I2Cinternal(0);
 
 // Micro-resistojet handlers
-MicroResistojetHandler lpm( GPIO_PORT_P2, GPIO_PIN5, GPIO_PIN6, GPIO_PIN7 );
-MicroResistojetHandler vlm( GPIO_PORT_P2, GPIO_PIN2, GPIO_PIN3, GPIO_PIN4 );
+MicroResistojetHandler mr[] =
+{
+     { "LPM", GPIO_PORT_P2, GPIO_PIN5, GPIO_PIN6, GPIO_PIN7, TIMER_A0_BASE, TIMER_A1_BASE },
+     { "VLM", GPIO_PORT_P7, GPIO_PIN6, GPIO_PIN5, GPIO_PIN4, TIMER_A1_BASE, TIMER_A0_BASE }
+};
+
+unsigned int num_mr = sizeof(mr)/sizeof(MicroResistojetHandler);
 
 // voltage / current sensors
 INA226 powerBus(I2Cinternal, 0x40);

@@ -9,7 +9,8 @@
 #include "MicroResistojetHandler.h"
 
 extern DSerial serial;
-extern MicroResistojetHandler lpm, vlm;
+extern MicroResistojetHandler mr[];
+extern const unsigned int num_mr;
 
 bool TestService::operatePropulsion(DataMessage &command)
 {
@@ -20,77 +21,68 @@ bool TestService::operatePropulsion(DataMessage &command)
         return false;
     }
 
+
     serial.println("TestService: Test Request");
+
+    bool ret;
 
     unsigned char _mr = command.getPayload()[2];
 
-    if (_mr > 2)
+    if (_mr > num_mr)
     {
         serial.println("Wrong microresistojet id");
-        return false;
+        ret = false;
     }
-
-    MicroResistojetHandler *mr;
-    if (_mr == 1)
+    else if (_mr == 0)
     {
-        serial.print("LPM - ");
-        mr = &lpm;
-    }
-    else if (_mr == 2)
-    {
-        serial.print("VLM - ");
-        mr = &vlm;
-
-        serial.println("Not working");
-        return true;
+        serial.println(
+                MicroResistojetHandler::stopActiveMR() ?
+                "Active microresistojet stopped" :
+                "Nothing to stop");
+        ret = true;
     }
     else
     {
-        MicroResistojetHandler::stopActiveMR();
-        serial.println("Everything stopped");
-        return true;
+        const unsigned char *config = (unsigned char *)(&command.getPayload()[3]);
+
+        struct MicroResistojetHandler::params configMR =
+        {
+            (uint_fast16_t)config[0],
+            (uint_fast16_t)config[1],
+            (uint_fast16_t)config[2],
+            ((uint_fast16_t)config[3])<<8 | ((uint_fast16_t)config[4]),
+            ((uint_fast16_t)config[5])<<8 | ((uint_fast16_t)config[6]),
+            ((uint_fast16_t)config[7])<<8 | ((uint_fast16_t)config[8])
+        };
+
+        MicroResistojetHandler * myMR = &mr[_mr-1];
+
+        ret = myMR->startMR(configMR);
+
+        serial.print(myMR->getName());
+        serial.print(" - ");
+
+        if (ret)
+        {
+            serial.print("Started with timer period ");
+            serial.print(configMR.timerPeriod, DEC);
+            serial.print(" ms, hold time ");
+            serial.print(configMR.time_hold, DEC);
+            serial.print(" ms and spike time ");
+            serial.print(configMR.time_spike/1000, DEC);
+            serial.print(".");
+            serial.print((configMR.time_spike/100)%10, DEC);
+            serial.print((configMR.time_spike/10)%10, DEC);
+            serial.print(configMR.time_spike%10, DEC);
+            serial.println(" ms");
+        }
+        else
+        {
+            serial.println("Wrong inputs");
+        }
     }
 
-    const unsigned char *config = (unsigned char *)(&command.getPayload()[3]);
-    const uint_fast16_t time_work   = (uint_fast16_t)config[0];
-    const uint_fast16_t time_before = (uint_fast16_t)config[1];
-    const uint_fast16_t duty_c_heat = (uint_fast16_t)config[2];
-    const uint_fast16_t timerPeriod = ((uint_fast16_t)config[3])<<8 | ((uint_fast16_t)config[4]);
-    const uint_fast16_t time_hold   = ((uint_fast16_t)config[5])<<8 | ((uint_fast16_t)config[6]);
-    const uint_fast16_t time_spike  = ((uint_fast16_t)config[7])<<8 | ((uint_fast16_t)config[8]);
-    if (time_work   >= 1 &&
-        time_spike  >= 350 &&
-        time_spike  <= 3800 &&
-        time_hold   >= 1 &&
-        time_hold   >= (time_spike/1000) &&
-        time_hold   <= timerPeriod &&
-        timerPeriod >= ((time_spike+1000-1)/1000) &&
-        timerPeriod <  2000 &&
-        time_before <  128 &&
-        time_work   <  128 &&
-        duty_c_heat <= 100)
-    {
-        mr->startMR(time_work, duty_c_heat, time_before, timerPeriod, time_hold, time_spike);
-
-        serial.print("Started with timer period ");
-        serial.print(timerPeriod, DEC);
-        serial.print(" ms, hold time ");
-        serial.print(time_hold, DEC);
-        serial.print(" ms and spike time ");
-        serial.print(time_spike/1000, DEC);
-        serial.print(".");
-        serial.print((time_spike/100)%10, DEC);
-        serial.print((time_spike/10)%10, DEC);
-        serial.print(time_spike%10, DEC);
-        serial.println(" ms");
-    }
-    else
-    {
-        serial.println("Wrong inputs");
-        return false;
-    }
-
-    return true;
+    return ret;
 }
 
 bool TestService::process(DataMessage &command, DataMessage &workingBuffer)
