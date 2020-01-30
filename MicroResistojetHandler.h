@@ -75,6 +75,7 @@ class MicroResistojetHandler
         const unsigned long MRIPinHold;
         const uint32_t MRITimerOutput;
         const uint32_t MRITimerTime;
+        void (*MRIUserFunction)( bool );
 
     public:
         struct params {
@@ -89,7 +90,8 @@ class MicroResistojetHandler
         MicroResistojetHandler( const char * name,
                                 const unsigned long port, const unsigned long pinHeat,
                                 const unsigned long pinSpike, const unsigned long pinHold,
-                                const uint32_t timerOutput, const uint32_t timerTime);
+                                const uint32_t timerOutput, const uint32_t timerTime,
+                                void (*userFunction)( bool ) = nullptr );
 
         ~MicroResistojetHandler();
 

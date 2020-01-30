@@ -36,6 +36,9 @@
 #define PROP_ADDRESS     6
 
 // callback functions
+void mrAction(bool on);
+void sendData();
+void notifySendData();
 void acquireTelemetry(PROPTelemetryContainer *tc);
 void periodicTask();
 

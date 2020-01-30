@@ -7,8 +7,8 @@ DWire I2Cinternal(0);
 // Micro-resistojet handlers
 MicroResistojetHandler mr[] =
 {
-     { "LPM", GPIO_PORT_P2, GPIO_PIN5, GPIO_PIN6, GPIO_PIN7, TIMER_A0_BASE, TIMER_A1_BASE },
-     { "VLM", GPIO_PORT_P7, GPIO_PIN6, GPIO_PIN5, GPIO_PIN4, TIMER_A1_BASE, TIMER_A0_BASE }
+     { "LPM", GPIO_PORT_P2, GPIO_PIN5, GPIO_PIN6, GPIO_PIN7, TIMER_A0_BASE, TIMER_A1_BASE, mrAction },
+     { "VLM", GPIO_PORT_P7, GPIO_PIN6, GPIO_PIN5, GPIO_PIN4, TIMER_A1_BASE, TIMER_A0_BASE, mrAction }
 };
 
 unsigned int num_mr = sizeof(mr)/sizeof(MicroResistojetHandler);
@@ -31,7 +31,7 @@ DSerial serial;
 // services running in the system
 PingService ping;
 ResetService reset( GPIO_PORT_P4, GPIO_PIN0 );
-HousekeepingService<PROPTelemetryContainer> hk;
+HousekeepingService<PROPTelemetryContainer> hk, hk2;
 SoftwareUpdateService SWUpdate;
 TestService test;
 Service* services[] = { &ping, &reset, &hk, &SWUpdate, &test };
@@ -41,7 +41,12 @@ CommandHandler<PQ9Frame> cmdHandler(pq9bus, services, 5);
 Task timerTask(periodicTask);
 Task* periodicTasks[] = {&timerTask};
 PeriodicTaskNotifier periodicNotifier = PeriodicTaskNotifier(FCLOCK, periodicTasks, 1);
-Task* tasks[] = { &cmdHandler, &timerTask };
+Task sendSensorsData(sendData);
+Task notifySendSensorsData(notifySendData);
+Task* tasks[] = { &cmdHandler, &timerTask, &sendSensorsData, &notifySendSensorsData };
+
+bool mr_active;
+uint_fast32_t mr_uptime;
 
 // system uptime
 unsigned long uptime = 0;
@@ -55,6 +60,89 @@ void kickWatchdog(DataFrame &newFrame)
 void validCmd(void)
 {
     reset.kickInternalWatchDog();
+}
+
+void mrAction(bool on)
+{
+    mr_active = on;
+    mr_uptime = 0;
+    notifySendData();
+}
+
+inline void sendThisData(PROPTelemetryContainer* tc)
+{
+    signed short i;
+
+    mr_uptime++;
+
+    serial.print(mr_uptime, DEC); serial.print(',');
+
+    serial.print(0, DEC); serial.print(','); // TODO: Send global time
+
+    serial.print(tc->getBusStatus(),  DEC); serial.print(',');
+    serial.print(tc->getBusVoltage(), DEC); serial.print(',');
+    i = tc->getBusCurrent();
+    if (i < 0)
+    {
+        serial.print('-');
+        i = -i;
+    }
+    serial.print(i, DEC); serial.print(',');
+
+    serial.print(tc->getValveHoldStatus(),  DEC); serial.print(',');
+    serial.print(tc->getValveHoldVoltage(), DEC); serial.print(',');
+    i = tc->getValveHoldCurrent();
+    if (i < 0)
+    {
+        serial.print('-');
+        i = -i;
+    }
+    serial.print(i, DEC); serial.print(',');
+
+    serial.print(tc->getValveSpikeStatus(),  DEC); serial.print(',');
+    serial.print(tc->getValveSpikeVoltage(), DEC); serial.print(',');
+    i = tc->getValveSpikeCurrent();
+    if (i < 0)
+    {
+        serial.print('-');
+        i = -i;
+    }
+    serial.print(i, DEC); serial.print(',');
+
+    serial.print(tc->getHeatersStatus(),  DEC); serial.print(',');
+    serial.print(tc->getHeatersVoltage(), DEC); serial.print(',');
+    i = tc->getHeatersCurrent();
+    if (i < 0)
+    {
+        serial.print('-');
+        i = -i;
+    }
+    serial.print(i, DEC); serial.print(',');
+
+    serial.print(tc->getTmpStatus(), DEC); serial.print(',');
+    i = tc->getTemperature();
+    if (i < 0)
+    {
+        serial.print('-');
+        i = -i;
+    }
+    serial.println(i, DEC);
+}
+
+void sendData()
+{
+    if (mr_active)
+    {
+        notifySendSensorsData.notify();
+        hk2.acquireTelemetry(acquireTelemetry);
+        sendThisData(hk2.getTelemetry());
+    }
+}
+
+void notifySendData()
+{
+    if (mr_active)
+        sendSensorsData.notify();
 }
 
 void periodicTask()
@@ -151,5 +239,5 @@ void main(void)
 
     serial.println("PROP booting...");
 
-    TaskManager::start(tasks, 2);
+    TaskManager::start(tasks, 4);
 }

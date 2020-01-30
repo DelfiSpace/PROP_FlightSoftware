@@ -21,11 +21,13 @@ inline void smallDelay(const uint32_t microseconds)
 MicroResistojetHandler::MicroResistojetHandler(const char * name,
                                                const unsigned long port, const unsigned long pinHeat,
                                                const unsigned long pinSpike, const unsigned long pinHold,
-                                               const uint32_t timerOutput, const uint32_t timerTime) :
+                                               const uint32_t timerOutput, const uint32_t timerTime,
+                                               void (*userFunction)( bool ) ) :
         MRIName(name),
         MRIPort(port), MRIPinHeat(pinHeat),
         MRIPinSpike(pinSpike), MRIPinHold(pinHold),
-        MRITimerOutput(timerOutput), MRITimerTime(timerTime)
+        MRITimerOutput(timerOutput), MRITimerTime(timerTime),
+        MRIUserFunction(userFunction)
 {
     // TODO: Check consistency of arguments
 
@@ -133,6 +135,9 @@ bool MicroResistojetHandler::startMR(struct params c)
         _handler_after_delay();
     }
 
+    if (MRIUserFunction)
+        MRIUserFunction(true);
+
     /* Starting Timer_A0 */
     MAP_Timer_A_startCounter(MRITimerOutput, TIMER_A_UP_MODE);
 
@@ -183,6 +188,9 @@ bool MicroResistojetHandler::stopMR()
     compareConfig_PWMHold.compareOutputMode  = TIMER_A_OUTPUTMODE_OUTBITVALUE;
     compareConfig_PWMSpike.compareOutputMode = TIMER_A_OUTPUTMODE_OUTBITVALUE;
     compareConfig_PWMHeat.compareOutputMode  = TIMER_A_OUTPUTMODE_RESET_SET;
+
+    if (MRIUserFunction)
+        MRIUserFunction(false);
 
     return true;
 }
