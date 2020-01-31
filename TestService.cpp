@@ -45,11 +45,11 @@ bool TestService::operatePropulsion(DataMessage &command)
     {
         const unsigned char *config = (unsigned char *)(&command.getPayload()[3]);
 
-        struct MicroResistojetHandler::params configMR =
+        struct MicroResistojetHandler::params_t configMR =
         {
-            (uint_fast16_t)config[0],
-            (uint_fast16_t)config[1],
-            (uint_fast16_t)config[2],
+            (uint_fast8_t)config[0],
+            (uint_fast8_t)config[1],
+            (uint_fast8_t)config[2],
             ((uint_fast16_t)config[3])<<8 | ((uint_fast16_t)config[4]),
             ((uint_fast16_t)config[5])<<8 | ((uint_fast16_t)config[6]),
             ((uint_fast16_t)config[7])<<8 | ((uint_fast16_t)config[8])

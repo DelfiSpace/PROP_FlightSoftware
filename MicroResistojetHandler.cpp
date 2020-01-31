@@ -9,6 +9,25 @@
 
 volatile MicroResistojetHandler * MicroResistojetHandler::activeMR = nullptr;
 
+const struct MicroResistojetHandler::config_t MicroResistojetHandler::configs[] =
+{
+    { GPIO_PORT_P2, GPIO_PIN5, GPIO_PORT_P2, GPIO_PIN6, GPIO_PIN7, TIMER_A0_BASE },
+    { GPIO_PORT_P7, GPIO_PIN6, GPIO_PORT_P7, GPIO_PIN5, GPIO_PIN4, TIMER_A1_BASE },
+    { GPIO_PORT_P5, GPIO_PIN7, GPIO_PORT_P6, GPIO_PIN6, GPIO_PIN7, TIMER_A2_BASE },
+    { GPIO_PORT_P8, GPIO_PIN2, GPIO_PORT_P9, GPIO_PIN2, GPIO_PIN3, TIMER_A3_BASE }
+};
+
+const unsigned int MicroResistojetHandler::num_configs =
+        sizeof(MicroResistojetHandler::configs)/sizeof(struct MicroResistojetHandler::config_t);
+
+const uint32_t availableTimers[] =
+{
+    TIMER_A0_BASE,
+    TIMER_A1_BASE,
+    TIMER_A2_BASE,
+    TIMER_A3_BASE
+};
+
 inline void smallDelay(const uint32_t microseconds)
 {
     const uint32_t cycles_per_it = 48;
@@ -18,45 +37,105 @@ inline void smallDelay(const uint32_t microseconds)
         __delay_cycles(cycles_per_it);
 }
 
-MicroResistojetHandler::MicroResistojetHandler(const char * name,
-                                               const unsigned long port, const unsigned long pinHeat,
-                                               const unsigned long pinSpike, const unsigned long pinHold,
-                                               const uint32_t timerOutput, const uint32_t timerTime,
-                                               void (*userFunction)( bool ) ) :
+MicroResistojetHandler::MicroResistojetHandler( const char * name, const unsigned int configId, const uint32_t timerTime,
+                                                void (*const userFunction)( const MicroResistojetHandler * ) ) :
         MRIName(name),
-        MRIPort(port), MRIPinHeat(pinHeat),
-        MRIPinSpike(pinSpike), MRIPinHold(pinHold),
-        MRITimerOutput(timerOutput), MRITimerTime(timerTime),
+        MRIConfigId(configId),
+        MRITimerTime(timerTime),
         MRIUserFunction(userFunction)
 {
-    // TODO: Check consistency of arguments
+    const struct config_t * my_config = &configs[configId];
 
-    MAP_GPIO_setOutputLowOnPin( MRIPort, MRIPinHeat|MRIPinSpike|MRIPinHold );
-    MAP_GPIO_setAsOutputPin( MRIPort, MRIPinHeat|MRIPinSpike|MRIPinHold );
+    if (configId >= num_configs)
+    {
+        //throw "Config ID does not exist!";
+        return;
+    }
+    else if (my_config->timerOutput == timerTime)
+    {
+        //throw "Specified timer cannot be equal to config timer!";
+        return;
+    }
+    else
+    {
+        bool okTimerTime = false;
+        for (unsigned int i = 0; i < sizeof(availableTimers)/sizeof(uint32_t); ++i) {
+            if (availableTimers[i] == timerTime) {
+                okTimerTime = true;
+                break;
+            }
+        }
+
+        if (!okTimerTime)
+        {
+            //throw "Specified timer does not exist!";
+            return;
+        }
+    }
+
+    setUp(my_config->portHeat, my_config->pinHeat,
+          my_config->portValve, my_config->pinSpike, my_config->pinHold,
+          my_config->timerOutput);
+}
+
+inline void MicroResistojetHandler::setUp( const unsigned long portHeat, const unsigned long pinHeat,
+                                    const unsigned long portValve, const unsigned long pinSpike, const unsigned long pinHold,
+                                    const uint32_t timerOutput )
+{
+    currentStatus = NEVER_STARTED;
+
+    MRIPortHeat = portHeat;
+    MRIPinHeat = pinHeat;
+
+    MRIPortValve = portValve;
+    MRIPinSpike = pinSpike;
+    MRIPinHold = pinHold;
+
+    MRITimerOutput = timerOutput;
+
+    MAP_GPIO_setOutputLowOnPin( MRIPortValve, MRIPinSpike|MRIPinHold );
+    MAP_GPIO_setOutputLowOnPin( MRIPortHeat, MRIPinHeat );
+    MAP_GPIO_setAsOutputPin( MRIPortValve, MRIPinSpike|MRIPinHold );
+    MAP_GPIO_setAsOutputPin( MRIPortHeat, MRIPinHeat );
 }
 
 MicroResistojetHandler::~MicroResistojetHandler()
 {
-    stopMR();
+    stopMR(STOP_OBJECT_DESTROYED);
 }
 
-const char * MicroResistojetHandler::getName()
+const char * MicroResistojetHandler::getName() const
 {
     return MRIName;
 }
 
+enum MicroResistojetHandler::status_t MicroResistojetHandler::getCurrentStatus() const
+{
+    return currentStatus;
+}
+
+struct MicroResistojetHandler::params_t MicroResistojetHandler::getCurrentParams() const
+{
+    return currentParams;
+}
+
 bool MicroResistojetHandler::stopActiveMR()
+{
+    return _stopActiveMR(STOP_MANUAL);
+}
+
+bool MicroResistojetHandler::_stopActiveMR(enum status_t stopReason)
 {
     volatile MicroResistojetHandler * activeMRnow = activeMR;
 
     return (activeMR != nullptr) ?
-           ((MicroResistojetHandler *)activeMRnow)->stopMR() :
+           ((MicroResistojetHandler *)activeMRnow)->stopMR(stopReason) :
            false;
 }
 
 void MicroResistojetHandler::_handler_stop_active_MR()
 {
-    stopActiveMR();
+    _stopActiveMR(STOP_TIMEOUT);
 }
 
 void MicroResistojetHandler::_handler_after_delay()
@@ -70,10 +149,13 @@ void MicroResistojetHandler::_handler_after_delay()
         MAP_Timer_A_initCompare(activeMR->MRITimerOutput, (Timer_A_CompareModeConfig *)&activeMR->compareConfig_PWMSpike);
         MAP_Timer_A_initCompare(activeMR->MRITimerOutput, (Timer_A_CompareModeConfig *)&activeMR->compareConfig_PWMHold);
         MAP_Timer_A_registerInterrupt(activeMR->MRITimerTime, TIMER_A_CCRX_AND_OVERFLOW_INTERRUPT, _handler_stop_active_MR);
+        activeMR->currentStatus = ON_HEAT_AND_VALVE;
+        if (activeMR->MRIUserFunction)
+            activeMR->MRIUserFunction((const MicroResistojetHandler *)activeMR);
     }
 }
 
-bool MicroResistojetHandler::startMR(struct params c)
+bool MicroResistojetHandler::startMR(struct params_t c)
 {
     if (!(  c.time_work   >= 1 &&
             c.time_spike  >= 350 &&
@@ -90,22 +172,26 @@ bool MicroResistojetHandler::startMR(struct params c)
         return false;
     }
 
-    stopActiveMR();
+    _stopActiveMR((activeMR == this) ? STOP_RECONFIGURING : STOP_START_DIFFERENT);
     activeMR = this;
 
     upConfig.timerPeriod = (uint_fast16_t)((((uint_fast64_t)c.timerPeriod) << 12)/125);
     upConfigCounter.timerPeriod = c.time_before << 9;
     compareConfig_PWMHold.compareValue  = (uint_fast16_t)((((uint_fast64_t)c.time_hold) << 12)/125);
     compareConfig_PWMSpike.compareValue = (uint_fast16_t)((((uint_fast64_t)c.time_spike) << 9)/15625);
-    compareConfig_PWMHeat.compareValue  = (uint_fast16_t)((((uint_fast32_t)upConfig.timerPeriod) * c.duty_c_heat)/100);
+    compareConfig_PWMHeat.compareValue  = (uint_fast16_t)((((uint_fast32_t)upConfig.timerPeriod) * ((uint_fast32_t)c.duty_c_heat))/100);
 
     /* Setting ACLK to REFO at 32Khz */
     MAP_CS_setReferenceOscillatorFrequency(CS_REFO_32KHZ);
     MAP_CS_initClockSignal(CS_ACLK, CS_REFOCLK_SELECT, CS_CLOCK_DIVIDER_1);
 
     /* Setting MRIPinSpike and MRIPinHold and peripheral outputs for CCR */
-    MAP_GPIO_setAsPeripheralModuleFunctionOutputPin(MRIPort,
-        MRIPinHeat|MRIPinSpike|MRIPinHold, GPIO_PRIMARY_MODULE_FUNCTION);
+    MAP_GPIO_setAsPeripheralModuleFunctionOutputPin(MRIPortValve,
+        MRIPinSpike|MRIPinHold, GPIO_PRIMARY_MODULE_FUNCTION);
+
+    /* Setting MRIPinHeat and peripheral outputs for CCR */
+    MAP_GPIO_setAsPeripheralModuleFunctionOutputPin(MRIPortHeat,
+        MRIPinHeat, GPIO_PRIMARY_MODULE_FUNCTION);
 
     /* Configuring Timer_A0 for UpDown Mode and starting */
     MAP_Timer_A_configureUpMode(MRITimerOutput, &upConfig);
@@ -125,18 +211,21 @@ bool MicroResistojetHandler::startMR(struct params c)
     const uint_fast16_t delay = upConfigCounter.timerPeriod;
     upConfigCounter.timerPeriod = c.time_work << 9;
 
+    currentParams = c;
+
     if (delay > 0)
     {
         MAP_Timer_A_clearInterruptFlag(MRITimerTime);
         MAP_Timer_A_registerInterrupt(MRITimerTime, TIMER_A_CCRX_AND_OVERFLOW_INTERRUPT, _handler_after_delay);
+        currentStatus = ON_HEAT_ONLY;
+
+        if (MRIUserFunction)
+            MRIUserFunction(this);
     }
     else
     {
         _handler_after_delay();
     }
-
-    if (MRIUserFunction)
-        MRIUserFunction(true);
 
     /* Starting Timer_A0 */
     MAP_Timer_A_startCounter(MRITimerOutput, TIMER_A_UP_MODE);
@@ -149,7 +238,7 @@ bool MicroResistojetHandler::startMR(struct params c)
     return true;
 }
 
-bool MicroResistojetHandler::stopMR()
+bool MicroResistojetHandler::stopMR(enum status_t stopReason)
 {
     volatile MicroResistojetHandler * activeMRnow;
 
@@ -182,15 +271,20 @@ bool MicroResistojetHandler::stopMR()
     MAP_Timer_A_stopTimer(MRITimerOutput);
     MAP_Timer_A_clearInterruptFlag(MRITimerOutput);
 
-    MAP_GPIO_setOutputLowOnPin( MRIPort, MRIPinHeat|MRIPinSpike|MRIPinHold );
-    MAP_GPIO_setAsOutputPin( MRIPort, MRIPinHeat|MRIPinSpike|MRIPinHold );
+    MAP_GPIO_setOutputLowOnPin( MRIPortValve, MRIPinSpike|MRIPinHold );
+    MAP_GPIO_setOutputLowOnPin( MRIPortHeat, MRIPinHeat );
+    MAP_GPIO_setAsOutputPin( MRIPortValve, MRIPinSpike|MRIPinHold );
+    MAP_GPIO_setAsOutputPin( MRIPortHeat, MRIPinHeat );
 
     compareConfig_PWMHold.compareOutputMode  = TIMER_A_OUTPUTMODE_OUTBITVALUE;
     compareConfig_PWMSpike.compareOutputMode = TIMER_A_OUTPUTMODE_OUTBITVALUE;
     compareConfig_PWMHeat.compareOutputMode  = TIMER_A_OUTPUTMODE_RESET_SET;
 
+    currentParams = { };
+    currentStatus = stopReason;
+
     if (MRIUserFunction)
-        MRIUserFunction(false);
+        MRIUserFunction(this);
 
     return true;
 }

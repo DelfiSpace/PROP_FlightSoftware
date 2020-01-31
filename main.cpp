@@ -7,8 +7,8 @@ DWire I2Cinternal(0);
 // Micro-resistojet handlers
 MicroResistojetHandler mr[] =
 {
-     { "LPM", GPIO_PORT_P2, GPIO_PIN5, GPIO_PIN6, GPIO_PIN7, TIMER_A0_BASE, TIMER_A1_BASE, mrAction },
-     { "VLM", GPIO_PORT_P7, GPIO_PIN6, GPIO_PIN5, GPIO_PIN4, TIMER_A1_BASE, TIMER_A0_BASE, mrAction }
+     { "LPM", 0, TIMER_A1_BASE, mrAction },
+     { "VLM", 1, TIMER_A0_BASE, mrAction }
 };
 
 unsigned int num_mr = sizeof(mr)/sizeof(MicroResistojetHandler);
@@ -45,8 +45,8 @@ Task sendSensorsData(sendData);
 Task notifySendSensorsData(notifySendData);
 Task* tasks[] = { &cmdHandler, &timerTask, &sendSensorsData, &notifySendSensorsData };
 
-bool mr_active;
-uint_fast32_t mr_uptime;
+bool mr_active = false;
+uint_fast32_t mr_uptime = 0;
 
 // system uptime
 unsigned long uptime = 0;
@@ -62,22 +62,52 @@ void validCmd(void)
     reset.kickInternalWatchDog();
 }
 
-void mrAction(bool on)
+void mrAction(const MicroResistojetHandler * mr)
 {
-    mr_active = on;
-    mr_uptime = 0;
-    notifySendData();
+    switch (mr->getCurrentStatus()) {
+        case MicroResistojetHandler::status_t::UNUSABLE:
+        case MicroResistojetHandler::status_t::NEVER_STARTED:
+            break;
+
+        case MicroResistojetHandler::status_t::ON_HEAT_ONLY:
+        case MicroResistojetHandler::status_t::ON_HEAT_AND_VALVE:
+            if (!mr_active) {
+                mr_active = true;
+                sendSensorsData.notify();
+            }
+            break;
+
+        default: // STOP
+            mr_active = false;
+            mr_uptime = 0;
+            break;
+    }
 }
 
-inline void sendThisData(PROPTelemetryContainer* tc)
+void sendThisData(PROPTelemetryContainer* tc, const uint_fast32_t globalTime, bool binary = false)
 {
-    signed short i;
+    if (binary)
+    {
+        serial.print(((unsigned char *)&globalTime)[3]);
+        serial.print(((unsigned char *)&globalTime)[2]);
+        serial.print(((unsigned char *)&globalTime)[1]);
+        serial.print(((unsigned char *)&globalTime)[0]);
 
-    mr_uptime++;
+        unsigned char * telemetry = tc->getArray();
 
-    serial.print(mr_uptime, DEC); serial.print(',');
+        for (int i = 0; i < tc->size(); ++i, ++telemetry)
+        {
+            serial.print(*telemetry);
+        }
 
-    serial.print(0, DEC); serial.print(','); // TODO: Send global time
+        return;
+    }
+
+    int_fast16_t i;
+
+    serial.print(tc->getUpTime(), DEC); serial.print(',');
+
+    serial.print(globalTime, DEC); serial.print(',');
 
     serial.print(tc->getBusStatus(),  DEC); serial.print(',');
     serial.print(tc->getBusVoltage(), DEC); serial.print(',');
@@ -135,7 +165,9 @@ void sendData()
     {
         notifySendSensorsData.notify();
         hk2.acquireTelemetry(acquireTelemetry);
-        sendThisData(hk2.getTelemetry());
+        PROPTelemetryContainer* tc = hk2.getTelemetry();
+        tc->setUpTime(++mr_uptime);
+        sendThisData(tc, 0); // TODO: Send global time
     }
 }
 
