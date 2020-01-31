@@ -4,15 +4,6 @@
 // I2C busses
 DWire I2Cinternal(0);
 
-// Micro-resistojet handlers
-MicroResistojetHandler mr[] =
-{
-     { "LPM", 0, TIMER_A1_BASE, mrAction },
-     { "VLM", 1, TIMER_A0_BASE, mrAction }
-};
-
-unsigned int num_mr = sizeof(mr)/sizeof(MicroResistojetHandler);
-
 // voltage / current sensors
 INA226 powerBus(I2Cinternal, 0x40);
 INA226 valveHold(I2Cinternal, 0x41);
@@ -31,22 +22,20 @@ DSerial serial;
 // services running in the system
 PingService ping;
 ResetService reset( GPIO_PORT_P4, GPIO_PIN0 );
-HousekeepingService<PROPTelemetryContainer> hk, hk2;
+HousekeepingService<PROPTelemetryContainer> hk;
 SoftwareUpdateService SWUpdate;
 TestService test;
-Service* services[] = { &ping, &reset, &hk, &SWUpdate, &test };
+const char * names[] = {"LPM", "VLM"};
+const unsigned int configs[] = {0, 1};
+PropulsionService prop(names, configs, 2);
+Service* services[] = { &ping, &reset, &hk, &SWUpdate, &test, &prop };
 
 // PROP board tasks
-CommandHandler<PQ9Frame> cmdHandler(pq9bus, services, 5);
+CommandHandler<PQ9Frame> cmdHandler(pq9bus, services, 6);
 Task timerTask(periodicTask);
 Task* periodicTasks[] = {&timerTask};
 PeriodicTaskNotifier periodicNotifier = PeriodicTaskNotifier(FCLOCK, periodicTasks, 1);
-Task sendSensorsData(sendData);
-Task notifySendSensorsData(notifySendData);
-Task* tasks[] = { &cmdHandler, &timerTask, &sendSensorsData, &notifySendSensorsData };
-
-bool mr_active = false;
-uint_fast32_t mr_uptime = 0;
+Task* tasks[] = { &cmdHandler, &timerTask, prop.getTask1(), prop.getTask2() };
 
 // system uptime
 unsigned long uptime = 0;
@@ -60,121 +49,6 @@ void kickWatchdog(DataFrame &newFrame)
 void validCmd(void)
 {
     reset.kickInternalWatchDog();
-}
-
-void mrAction(const MicroResistojetHandler * mr)
-{
-    switch (mr->getCurrentStatus()) {
-        case MicroResistojetHandler::status_t::UNUSABLE:
-        case MicroResistojetHandler::status_t::NEVER_STARTED:
-            break;
-
-        case MicroResistojetHandler::status_t::ON_HEAT_ONLY:
-        case MicroResistojetHandler::status_t::ON_HEAT_AND_VALVE:
-            if (!mr_active) {
-                mr_active = true;
-                sendSensorsData.notify();
-            }
-            break;
-
-        default: // STOP
-            mr_active = false;
-            mr_uptime = 0;
-            break;
-    }
-}
-
-void sendThisData(PROPTelemetryContainer* tc, const uint_fast32_t globalTime, bool binary = false)
-{
-    if (binary)
-    {
-        serial.print(((unsigned char *)&globalTime)[3]);
-        serial.print(((unsigned char *)&globalTime)[2]);
-        serial.print(((unsigned char *)&globalTime)[1]);
-        serial.print(((unsigned char *)&globalTime)[0]);
-
-        unsigned char * telemetry = tc->getArray();
-
-        for (int i = 0; i < tc->size(); ++i, ++telemetry)
-        {
-            serial.print(*telemetry);
-        }
-
-        return;
-    }
-
-    int_fast16_t i;
-
-    serial.print(tc->getUpTime(), DEC); serial.print(',');
-
-    serial.print(globalTime, DEC); serial.print(',');
-
-    serial.print(tc->getBusStatus(),  DEC); serial.print(',');
-    serial.print(tc->getBusVoltage(), DEC); serial.print(',');
-    i = tc->getBusCurrent();
-    if (i < 0)
-    {
-        serial.print('-');
-        i = -i;
-    }
-    serial.print(i, DEC); serial.print(',');
-
-    serial.print(tc->getValveHoldStatus(),  DEC); serial.print(',');
-    serial.print(tc->getValveHoldVoltage(), DEC); serial.print(',');
-    i = tc->getValveHoldCurrent();
-    if (i < 0)
-    {
-        serial.print('-');
-        i = -i;
-    }
-    serial.print(i, DEC); serial.print(',');
-
-    serial.print(tc->getValveSpikeStatus(),  DEC); serial.print(',');
-    serial.print(tc->getValveSpikeVoltage(), DEC); serial.print(',');
-    i = tc->getValveSpikeCurrent();
-    if (i < 0)
-    {
-        serial.print('-');
-        i = -i;
-    }
-    serial.print(i, DEC); serial.print(',');
-
-    serial.print(tc->getHeatersStatus(),  DEC); serial.print(',');
-    serial.print(tc->getHeatersVoltage(), DEC); serial.print(',');
-    i = tc->getHeatersCurrent();
-    if (i < 0)
-    {
-        serial.print('-');
-        i = -i;
-    }
-    serial.print(i, DEC); serial.print(',');
-
-    serial.print(tc->getTmpStatus(), DEC); serial.print(',');
-    i = tc->getTemperature();
-    if (i < 0)
-    {
-        serial.print('-');
-        i = -i;
-    }
-    serial.println(i, DEC);
-}
-
-void sendData()
-{
-    if (mr_active)
-    {
-        notifySendSensorsData.notify();
-        hk2.acquireTelemetry(acquireTelemetry);
-        PROPTelemetryContainer* tc = hk2.getTelemetry();
-        tc->setUpTime(++mr_uptime);
-        sendThisData(tc, 0); // TODO: Send global time
-    }
-}
-
-void notifySendData()
-{
-    if (mr_active)
-        sendSensorsData.notify();
 }
 
 void periodicTask()

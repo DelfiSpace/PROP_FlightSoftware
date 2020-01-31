@@ -45,6 +45,9 @@ class MicroResistojetHandler
             STOP_START_DIFFERENT
         };
 
+        MicroResistojetHandler( const char * name, const unsigned int configId,
+                                void (*const userFunction)( const MicroResistojetHandler * ) = nullptr );
+
         MicroResistojetHandler( const char * name, const unsigned int configId, const uint32_t timerTime,
                                 void (*const userFunction)( const MicroResistojetHandler * ) = nullptr );
 
@@ -63,7 +66,6 @@ class MicroResistojetHandler
     protected:
         const char * MRIName;
         const unsigned int MRIConfigId;
-        const uint32_t MRITimerTime;
 
         void (*const MRIUserFunction)( const MicroResistojetHandler * );
 
@@ -125,6 +127,7 @@ class MicroResistojetHandler
         unsigned long MRIPinHold;
 
         uint32_t MRITimerOutput;
+        uint32_t MRITimerTime;
 
         struct params_t currentParams = { };
         enum status_t currentStatus = UNUSABLE;

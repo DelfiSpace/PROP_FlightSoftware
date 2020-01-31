@@ -28,7 +28,7 @@
 #include "Service.h"
 #include "SoftwareUpdateService.h"
 #include "TestService.h"
-#include "MicroResistojetHandler.h"
+#include "PropulsionService.h"
 #include "PeriodicTaskNotifier.h"
 
 #define FCLOCK 48000000
@@ -36,9 +36,6 @@
 #define PROP_ADDRESS     6
 
 // callback functions
-void mrAction(const MicroResistojetHandler * mr);
-void sendData();
-void notifySendData();
 void acquireTelemetry(PROPTelemetryContainer *tc);
 void periodicTask();
 

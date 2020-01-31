@@ -5,16 +5,16 @@
  *      Author: guillemrueda
  */
 
-#include <MicroResistojetHandler.h>
+#include "MicroResistojetHandler.h"
 
 volatile MicroResistojetHandler * MicroResistojetHandler::activeMR = nullptr;
 
 const struct MicroResistojetHandler::config_t MicroResistojetHandler::configs[] =
 {
-    { GPIO_PORT_P2, GPIO_PIN5, GPIO_PORT_P2, GPIO_PIN6, GPIO_PIN7, TIMER_A0_BASE },
-    { GPIO_PORT_P7, GPIO_PIN6, GPIO_PORT_P7, GPIO_PIN5, GPIO_PIN4, TIMER_A1_BASE },
-    { GPIO_PORT_P5, GPIO_PIN7, GPIO_PORT_P6, GPIO_PIN6, GPIO_PIN7, TIMER_A2_BASE },
-    { GPIO_PORT_P8, GPIO_PIN2, GPIO_PORT_P9, GPIO_PIN2, GPIO_PIN3, TIMER_A3_BASE }
+    { GPIO_PORT_P2, GPIO_PIN5, GPIO_PORT_P2, GPIO_PIN6, GPIO_PIN7, TIMER_A0_BASE }, // Heat (pin 21), Spike (pin 22), Hold (pin 23)
+    { GPIO_PORT_P7, GPIO_PIN6, GPIO_PORT_P7, GPIO_PIN5, GPIO_PIN4, TIMER_A1_BASE }, // Heat (pin 28), Spike (pin 27), Hold (pin 26)
+    { GPIO_PORT_P5, GPIO_PIN7, GPIO_PORT_P6, GPIO_PIN6, GPIO_PIN7, TIMER_A2_BASE }, // Heat (pin 71), Spike (pin 80), Hold (pin 81)
+    { GPIO_PORT_P8, GPIO_PIN2, GPIO_PORT_P9, GPIO_PIN2, GPIO_PIN3, TIMER_A3_BASE }  // Heat (pin 46), Spike (pin 74), Hold (pin 75)
 };
 
 const unsigned int MicroResistojetHandler::num_configs =
@@ -35,6 +35,40 @@ inline void smallDelay(const uint32_t microseconds)
 
     for (uint32_t k = 0; k < d1; ++k)
         __delay_cycles(cycles_per_it);
+}
+
+MicroResistojetHandler::MicroResistojetHandler( const char * name, const unsigned int configId,
+                                                void (*const userFunction)( const MicroResistojetHandler * ) ) :
+        MRIName(name),
+        MRIConfigId(configId),
+        MRIUserFunction(userFunction)
+{
+
+    if (configId >= num_configs)
+    {
+        //throw "Config ID does not exist!";
+        return;
+    }
+
+    const struct config_t * my_config = &configs[configId];
+
+    MRITimerTime = my_config->timerOutput;
+    for (unsigned int i = 0; i < sizeof(availableTimers)/sizeof(uint32_t); ++i) {
+        if (availableTimers[i] != MRITimerTime) {
+            MRITimerTime = availableTimers[i];
+            break;
+        }
+    }
+
+    if (MRITimerTime == my_config->timerOutput)
+    {
+        //throw "Not enough available timers!";
+        return;
+    }
+
+    setUp(my_config->portHeat, my_config->pinHeat,
+          my_config->portValve, my_config->pinSpike, my_config->pinHold,
+          my_config->timerOutput);
 }
 
 MicroResistojetHandler::MicroResistojetHandler( const char * name, const unsigned int configId, const uint32_t timerTime,

@@ -12,11 +12,10 @@
 #include "DSerial.h"
 #include <driverlib.h>
 
-#define TEST_SERVICE            20 // check
+#define TEST_SERVICE            0 // check
 
 class TestService: public Service
 {
-     bool operatePropulsion(DataMessage &command);
  public:
      virtual bool process( DataMessage &command, DataMessage &workingBbuffer );
 };
