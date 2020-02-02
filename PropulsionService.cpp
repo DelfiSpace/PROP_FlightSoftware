@@ -24,12 +24,24 @@ extern MB85RS fram;
 
 PropulsionService * PropulsionService::prop = nullptr;
 
+volatile uint_fast32_t PropulsionService::num_oflw = 0;
+
+void PropulsionService::_handler_timer_overflow()
+{
+    ++num_oflw;
+}
+
 PropulsionService::PropulsionService(const char * mrName[], const unsigned int mrConfig[], unsigned int count)
 {
     if (prop != nullptr)
         prop->~PropulsionService();
 
     prop = this;
+
+    MAP_Timer_A_configureContinuousMode(TIMER_A2_BASE, &continousConfig);
+    MAP_Timer_A_clearInterruptFlag(TIMER_A2_BASE);
+    MAP_Timer_A_registerInterrupt(TIMER_A2_BASE, TIMER_A_CCRX_AND_OVERFLOW_INTERRUPT, _handler_timer_overflow);
+    MAP_Timer_A_startCounter(TIMER_A2_BASE, TIMER_A_CONTINUOUS_MODE);
 
     task1 = new Task(saveData);
     task2 = new Task(saveData);
@@ -57,6 +69,12 @@ PropulsionService::~PropulsionService()
     delete task2;
 
     prop = nullptr;
+
+    MAP_Timer_A_stopTimer(TIMER_A2_BASE);
+    MAP_Timer_A_unregisterInterrupt(TIMER_A2_BASE, TIMER_A_CCRX_AND_OVERFLOW_INTERRUPT);
+    MAP_Timer_A_clearInterruptFlag(TIMER_A2_BASE);
+
+    num_oflw = 0;
 }
 
 bool PropulsionService::startMR(MicroResistojetHandler * myMR, const unsigned char * config)
@@ -302,7 +320,15 @@ void PropulsionService::saveByte(unsigned char byte)
 
 uint_fast32_t PropulsionService::getGlobalTime()
 {
-    return 0; // TODO: Get global time
+    volatile uint_fast32_t _num_oflw;
+    volatile uint16_t base;
+
+    do {
+        _num_oflw = num_oflw;
+        base = MAP_Timer_A_getCounterValue(TIMER_A2_BASE);
+    } while (_num_oflw != num_oflw);
+
+    return (8 << sizeof(uint16_t))*_num_oflw + ((uint_fast32_t)base);
 }
 
 uint_fast32_t PropulsionService::saveGlobalTime(bool now)

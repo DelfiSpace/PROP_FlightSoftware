@@ -23,6 +23,8 @@ class PropulsionService: public Service
     private:
         static PropulsionService * prop;
 
+        static volatile uint_fast32_t num_oflw;
+
         unsigned int num_mr = 0;
         unsigned int pos_fram = 0, last_start_pos_fram = 0;
         MicroResistojetHandler * mr[10];
@@ -40,6 +42,16 @@ class PropulsionService: public Service
         HousekeepingService<PROPTelemetryContainer> hk;
 
         Task * task1, * task2;
+
+        const Timer_A_ContinuousModeConfig continousConfig =
+        {
+            TIMER_A_CLOCKSOURCE_ACLK,               // ACLK Clock Source
+            TIMER_A_CLOCKSOURCE_DIVIDER_4,          // ACLK / 4
+            TIMER_A_TAIE_INTERRUPT_ENABLE,          // Enable Timer interrupt
+            TIMER_A_DO_CLEAR                        // Clear value
+        };
+
+        static void _handler_timer_overflow();
 
         static void mrAction(const MicroResistojetHandler * mr);
 

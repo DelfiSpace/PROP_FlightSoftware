@@ -15,7 +15,7 @@ const struct MicroResistojetHandler::config_t MicroResistojetHandler::configs[] 
 {
     { GPIO_PORT_P2, GPIO_PIN5, GPIO_PORT_P2, GPIO_PIN6, GPIO_PIN7, TIMER_A0_BASE }, // Heat (pin 21), Spike (pin 22), Hold (pin 23)
     { GPIO_PORT_P7, GPIO_PIN6, GPIO_PORT_P7, GPIO_PIN5, GPIO_PIN4, TIMER_A1_BASE }, // Heat (pin 28), Spike (pin 27), Hold (pin 26)
-    { GPIO_PORT_P5, GPIO_PIN7, GPIO_PORT_P6, GPIO_PIN6, GPIO_PIN7, TIMER_A2_BASE }, // Heat (pin 71), Spike (pin 80), Hold (pin 81)
+//  { GPIO_PORT_P5, GPIO_PIN7, GPIO_PORT_P6, GPIO_PIN6, GPIO_PIN7, TIMER_A2_BASE }, // Heat (pin 71), Spike (pin 80), Hold (pin 81)
     { GPIO_PORT_P8, GPIO_PIN2, GPIO_PORT_P9, GPIO_PIN2, GPIO_PIN3, TIMER_A3_BASE }  // Heat (pin 46), Spike (pin 74), Hold (pin 75)
 };
 
@@ -25,7 +25,7 @@ const uint32_t availableTimers[] =
 {
     TIMER_A0_BASE,
     TIMER_A1_BASE,
-    TIMER_A2_BASE,
+//  TIMER_A2_BASE,
     TIMER_A3_BASE
 };
 
