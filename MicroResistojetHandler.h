@@ -34,7 +34,7 @@ class MicroResistojetHandler
         };
 
         enum status_t {
-            UNUSABLE,
+            UNUSABLE = 0,
             NEVER_STARTED,
             ON_HEAT_ONLY,
             ON_HEAT_AND_VALVE,
@@ -55,10 +55,10 @@ class MicroResistojetHandler
 
         const char * getName() const;
         enum status_t getCurrentStatus() const;
-        struct params_t getCurrentParams() const;
+        const struct params_t * getCurrentParams() const;
 
-        bool startMR(struct params_t c);
-        static bool stopActiveMR();
+        bool startMR(struct params_t c, bool notify = true);
+        static const MicroResistojetHandler * stopActiveMR();
 
         static const struct config_t configs[];
         static const unsigned int num_configs;
@@ -129,6 +129,8 @@ class MicroResistojetHandler
         uint32_t MRITimerOutput;
         uint32_t MRITimerTime;
 
+        bool notify = true;
+
         struct params_t currentParams = { };
         enum status_t currentStatus = UNUSABLE;
 
@@ -139,7 +141,7 @@ class MicroResistojetHandler
         static void _handler_stop_active_MR();
         static void _handler_after_delay();
 
-        static bool _stopActiveMR(enum status_t stopReason);
+        static const MicroResistojetHandler * _stopActiveMR(enum status_t stopReason);
 
         inline void setUp( const unsigned long portHeat, const unsigned long pinHeat,
                     const unsigned long portValve, const unsigned long pinSpike, const unsigned long pinHold,

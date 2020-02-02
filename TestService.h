@@ -1,8 +1,8 @@
 /*
  * TestService.h
  *
- *  Created on: 14 Nov 2019
- *      Author: guillemrueda
+ *  Created on: 6 Aug 2019
+ *      Author: stefanosperett
  */
 
 #ifndef TESTSERVICE_H_
@@ -10,9 +10,8 @@
 
 #include "Service.h"
 #include "DSerial.h"
-#include <driverlib.h>
+#include "MB85RS.h"
 
-#define TEST_SERVICE            0 // check
 
 class TestService: public Service
 {

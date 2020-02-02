@@ -25,6 +25,8 @@
 #include "HousekeepingService.h"
 #include "PROPTelemetryContainer.h"
 #include "TMP100.h"
+#include "DSPI.h"
+#include "MB85RS.h"
 #include "Service.h"
 #include "SoftwareUpdateService.h"
 #include "TestService.h"

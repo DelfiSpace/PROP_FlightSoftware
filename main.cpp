@@ -1,8 +1,13 @@
-
 #include "PROP.h"
+
+#define NUM_ELEM(x) (sizeof(x)/sizeof(x[0]))
 
 // I2C busses
 DWire I2Cinternal(0);
+
+// SPI bus
+DSPI spi(3);
+MB85RS fram(spi, GPIO_PORT_P1, GPIO_PIN0);
 
 // voltage / current sensors
 INA226 powerBus(I2Cinternal, 0x40);
@@ -27,14 +32,14 @@ SoftwareUpdateService SWUpdate;
 TestService test;
 const char * names[] = {"LPM", "VLM"};
 const unsigned int configs[] = {0, 1};
-PropulsionService prop(names, configs, 2);
+PropulsionService prop(names, configs, NUM_ELEM(names));
 Service* services[] = { &ping, &reset, &hk, &SWUpdate, &test, &prop };
 
 // PROP board tasks
-CommandHandler<PQ9Frame> cmdHandler(pq9bus, services, 6);
+CommandHandler<PQ9Frame> cmdHandler(pq9bus, services, NUM_ELEM(services));
 Task timerTask(periodicTask);
 Task* periodicTasks[] = {&timerTask};
-PeriodicTaskNotifier periodicNotifier = PeriodicTaskNotifier(FCLOCK, periodicTasks, 1);
+PeriodicTaskNotifier periodicNotifier = PeriodicTaskNotifier(FCLOCK, periodicTasks, NUM_ELEM(periodicTasks));
 Task* tasks[] = { &cmdHandler, &timerTask, prop.getTask1(), prop.getTask2() };
 
 // system uptime
@@ -114,6 +119,11 @@ void main(void)
     I2Cinternal.setFastMode();
     I2Cinternal.begin();
 
+    // Initialize SPI master
+    spi.initMaster(DSPI::MODE0, DSPI::MSBFirst, 1000000);
+    fram.init();
+    fram.erase();
+
     // initialize the shunt resistor
     powerBus.setShuntResistor(40);
     valveHold.setShuntResistor(40);
@@ -145,5 +155,5 @@ void main(void)
 
     serial.println("PROP booting...");
 
-    TaskManager::start(tasks, 4);
+    TaskManager::start(tasks, NUM_ELEM(tasks));
 }

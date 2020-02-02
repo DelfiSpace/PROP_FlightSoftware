@@ -7,6 +7,8 @@
 
 #include "MicroResistojetHandler.h"
 
+#define NUM_ELEM(x) (sizeof(x)/sizeof(x[0]))
+
 volatile MicroResistojetHandler * MicroResistojetHandler::activeMR = nullptr;
 
 const struct MicroResistojetHandler::config_t MicroResistojetHandler::configs[] =
@@ -17,8 +19,7 @@ const struct MicroResistojetHandler::config_t MicroResistojetHandler::configs[] 
     { GPIO_PORT_P8, GPIO_PIN2, GPIO_PORT_P9, GPIO_PIN2, GPIO_PIN3, TIMER_A3_BASE }  // Heat (pin 46), Spike (pin 74), Hold (pin 75)
 };
 
-const unsigned int MicroResistojetHandler::num_configs =
-        sizeof(MicroResistojetHandler::configs)/sizeof(struct MicroResistojetHandler::config_t);
+const unsigned int MicroResistojetHandler::num_configs = NUM_ELEM(MicroResistojetHandler::configs);
 
 const uint32_t availableTimers[] =
 {
@@ -53,7 +54,7 @@ MicroResistojetHandler::MicroResistojetHandler( const char * name, const unsigne
     const struct config_t * my_config = &configs[configId];
 
     MRITimerTime = my_config->timerOutput;
-    for (unsigned int i = 0; i < sizeof(availableTimers)/sizeof(uint32_t); ++i) {
+    for (unsigned int i = 0; i < NUM_ELEM(availableTimers); ++i) {
         if (availableTimers[i] != MRITimerTime) {
             MRITimerTime = availableTimers[i];
             break;
@@ -93,7 +94,7 @@ MicroResistojetHandler::MicroResistojetHandler( const char * name, const unsigne
     else
     {
         bool okTimerTime = false;
-        for (unsigned int i = 0; i < sizeof(availableTimers)/sizeof(uint32_t); ++i) {
+        for (unsigned int i = 0; i < NUM_ELEM(availableTimers); ++i) {
             if (availableTimers[i] == timerTime) {
                 okTimerTime = true;
                 break;
@@ -148,23 +149,23 @@ enum MicroResistojetHandler::status_t MicroResistojetHandler::getCurrentStatus()
     return currentStatus;
 }
 
-struct MicroResistojetHandler::params_t MicroResistojetHandler::getCurrentParams() const
+const struct MicroResistojetHandler::params_t * MicroResistojetHandler::getCurrentParams() const
 {
-    return currentParams;
+    return &currentParams;
 }
 
-bool MicroResistojetHandler::stopActiveMR()
+const MicroResistojetHandler * MicroResistojetHandler::stopActiveMR()
 {
     return _stopActiveMR(STOP_MANUAL);
 }
 
-bool MicroResistojetHandler::_stopActiveMR(enum status_t stopReason)
+const MicroResistojetHandler * MicroResistojetHandler::_stopActiveMR(enum status_t stopReason)
 {
     volatile MicroResistojetHandler * activeMRnow = activeMR;
 
-    return (activeMR != nullptr) ?
-           ((MicroResistojetHandler *)activeMRnow)->stopMR(stopReason) :
-           false;
+    return ((activeMR != nullptr) && ((MicroResistojetHandler *)activeMRnow)->stopMR(stopReason)) ?
+            (const MicroResistojetHandler *)activeMRnow :
+            nullptr;
 }
 
 void MicroResistojetHandler::_handler_stop_active_MR()
@@ -184,12 +185,12 @@ void MicroResistojetHandler::_handler_after_delay()
         MAP_Timer_A_initCompare(activeMR->MRITimerOutput, (Timer_A_CompareModeConfig *)&activeMR->compareConfig_PWMHold);
         MAP_Timer_A_registerInterrupt(activeMR->MRITimerTime, TIMER_A_CCRX_AND_OVERFLOW_INTERRUPT, _handler_stop_active_MR);
         activeMR->currentStatus = ON_HEAT_AND_VALVE;
-        if (activeMR->MRIUserFunction)
+        if (activeMR->MRIUserFunction && activeMR->notify)
             activeMR->MRIUserFunction((const MicroResistojetHandler *)activeMR);
     }
 }
 
-bool MicroResistojetHandler::startMR(struct params_t c)
+bool MicroResistojetHandler::startMR(struct params_t c, bool notify)
 {
     if (!(  c.time_work   >= 1 &&
             c.time_spike  >= 350 &&
@@ -208,6 +209,7 @@ bool MicroResistojetHandler::startMR(struct params_t c)
 
     _stopActiveMR((activeMR == this) ? STOP_RECONFIGURING : STOP_START_DIFFERENT);
     activeMR = this;
+    this->notify = notify;
 
     upConfig.timerPeriod = (uint_fast16_t)((((uint_fast64_t)c.timerPeriod) << 12)/125);
     upConfigCounter.timerPeriod = c.time_before << 9;
@@ -253,7 +255,7 @@ bool MicroResistojetHandler::startMR(struct params_t c)
         MAP_Timer_A_registerInterrupt(MRITimerTime, TIMER_A_CCRX_AND_OVERFLOW_INTERRUPT, _handler_after_delay);
         currentStatus = ON_HEAT_ONLY;
 
-        if (MRIUserFunction)
+        if (MRIUserFunction && notify)
             MRIUserFunction(this);
     }
     else
@@ -317,7 +319,7 @@ bool MicroResistojetHandler::stopMR(enum status_t stopReason)
     currentParams = { };
     currentStatus = stopReason;
 
-    if (MRIUserFunction)
+    if (MRIUserFunction && notify)
         MRIUserFunction(this);
 
     return true;
