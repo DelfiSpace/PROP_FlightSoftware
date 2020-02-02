@@ -11,6 +11,8 @@
 
 #define NUM_ELEM(x) (sizeof(x)/sizeof(x[0]))
 
+#define TIMER_COUNTER TIMER_A2_BASE
+
 #define START_SEQ_BYTE   0xAA
 #define STOP_SEQ_BYTE    0xBB
 #define START_FRAME_BYTE 0xCC
@@ -28,7 +30,7 @@ volatile uint_fast32_t PropulsionService::num_oflw = 0;
 
 void PropulsionService::_handler_timer_overflow()
 {
-    MAP_Timer_A_clearInterruptFlag(TIMER_A2_BASE);
+    MAP_Timer_A_clearInterruptFlag(TIMER_COUNTER);
     ++num_oflw;
 }
 
@@ -39,10 +41,10 @@ PropulsionService::PropulsionService(const char * mrName[], const unsigned int m
 
     prop = this;
 
-    MAP_Timer_A_configureContinuousMode(TIMER_A2_BASE, &continousConfig);
-    MAP_Timer_A_clearInterruptFlag(TIMER_A2_BASE);
-    MAP_Timer_A_registerInterrupt(TIMER_A2_BASE, TIMER_A_CCRX_AND_OVERFLOW_INTERRUPT, _handler_timer_overflow);
-    MAP_Timer_A_startCounter(TIMER_A2_BASE, TIMER_A_CONTINUOUS_MODE);
+    MAP_Timer_A_configureContinuousMode(TIMER_COUNTER, &continousConfig);
+    MAP_Timer_A_clearInterruptFlag(TIMER_COUNTER);
+    MAP_Timer_A_registerInterrupt(TIMER_COUNTER, TIMER_A_CCRX_AND_OVERFLOW_INTERRUPT, _handler_timer_overflow);
+    MAP_Timer_A_startCounter(TIMER_COUNTER, TIMER_A_CONTINUOUS_MODE);
 
     task1 = new Task(saveData);
     task2 = new Task(saveData);
@@ -71,9 +73,9 @@ PropulsionService::~PropulsionService()
 
     prop = nullptr;
 
-    MAP_Timer_A_stopTimer(TIMER_A2_BASE);
-    MAP_Timer_A_unregisterInterrupt(TIMER_A2_BASE, TIMER_A_CCRX_AND_OVERFLOW_INTERRUPT);
-    MAP_Timer_A_clearInterruptFlag(TIMER_A2_BASE);
+    MAP_Timer_A_stopTimer(TIMER_COUNTER);
+    MAP_Timer_A_unregisterInterrupt(TIMER_COUNTER, TIMER_A_CCRX_AND_OVERFLOW_INTERRUPT);
+    MAP_Timer_A_clearInterruptFlag(TIMER_COUNTER);
 
     num_oflw = 0;
 }
@@ -326,7 +328,7 @@ uint_fast32_t PropulsionService::getGlobalTime()
 
     do {
         _num_oflw = num_oflw;
-        base = MAP_Timer_A_getCounterValue(TIMER_A2_BASE);
+        base = MAP_Timer_A_getCounterValue(TIMER_COUNTER);
     } while (_num_oflw != num_oflw);
 
     return (8 << sizeof(uint16_t))*_num_oflw + ((uint_fast32_t)base);
