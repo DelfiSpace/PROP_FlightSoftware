@@ -28,6 +28,7 @@ volatile uint_fast32_t PropulsionService::num_oflw = 0;
 
 void PropulsionService::_handler_timer_overflow()
 {
+    MAP_Timer_A_clearInterruptFlag(TIMER_A2_BASE);
     ++num_oflw;
 }
 
