@@ -46,7 +46,7 @@ class PropulsionService: public Service
         const Timer_A_ContinuousModeConfig continousConfig =
         {
             TIMER_A_CLOCKSOURCE_ACLK,               // ACLK Clock Source
-            TIMER_A_CLOCKSOURCE_DIVIDER_4,          // ACLK / 4
+            TIMER_A_CLOCKSOURCE_DIVIDER_8,          // ACLK / 8
             TIMER_A_TAIE_INTERRUPT_ENABLE,          // Enable Timer interrupt
             TIMER_A_DO_CLEAR                        // Clear value
         };
@@ -76,7 +76,7 @@ class PropulsionService: public Service
 
         static uint_fast32_t getGlobalTime();
 
-        static bool startMR(MicroResistojetHandler * myMR, const unsigned char * config);
+        static bool startMR(MicroResistojetHandler * myMR, bool save, const unsigned char * config);
 
         void sendCount();
 

@@ -80,19 +80,19 @@ PropulsionService::~PropulsionService()
     num_oflw = 0;
 }
 
-bool PropulsionService::startMR(MicroResistojetHandler * myMR, const unsigned char * config)
+bool PropulsionService::startMR(MicroResistojetHandler * myMR, bool save, const unsigned char * config)
 {
     struct MicroResistojetHandler::params_t configMR =
     {
+        (uint_fast8_t)config[0],
         (uint_fast8_t)config[1],
         (uint_fast8_t)config[2],
-        (uint_fast8_t)config[3],
-        ((uint_fast16_t)config[4])<<8 | ((uint_fast16_t)config[5]),
-        ((uint_fast16_t)config[6])<<8 | ((uint_fast16_t)config[7]),
-        ((uint_fast16_t)config[8])<<8 | ((uint_fast16_t)config[9])
+        ((uint_fast16_t)config[3])<<8 | ((uint_fast16_t)config[4]),
+        ((uint_fast16_t)config[5])<<8 | ((uint_fast16_t)config[6]),
+        ((uint_fast16_t)config[7])<<8 | ((uint_fast16_t)config[8])
     };
 
-    bool ret = myMR->startMR(configMR, config[0]);
+    bool ret = myMR->startMR(configMR, save);
 
     const char * name = myMR->getName();
     if (name) serial.print(name);
@@ -152,7 +152,7 @@ bool PropulsionService::operatePropulsion(const unsigned char request, const uns
             return true;
 
         case 1: // START
-            return startMR(mr[payload[0]], &payload[1]);
+            return startMR(mr[payload[1]], payload[0], &payload[2]);
 
 
         case 2: // FRAM
@@ -278,7 +278,7 @@ void PropulsionService::propStart(const MicroResistojetHandler * mr)
             sizeof(const char *) + sizeof(const struct MicroResistojetHandler::params_t) +
             sizeof(reason);
 
-    if ((mr_active == 1) && (min_size <= (MEM_SIZE-((int_fast64_t)pos_fram)))) {
+    if ((mr_active == 0) && (min_size <= (MEM_SIZE-((int_fast64_t)pos_fram)))) {
         mr_active = 1;
         mr_uptime = 0;
         task1->notify();
@@ -290,7 +290,8 @@ void PropulsionService::propStart(const MicroResistojetHandler * mr)
 
         saveGlobalTime();
 
-        fram.write(pos_fram, (unsigned char *)(mr->getName()), sizeof(const char *));
+        const char * name = mr->getName();
+        fram.write(pos_fram, (unsigned char *)&name, sizeof(const char *));
         pos_fram += sizeof(const char *);
 
         fram.write(pos_fram, (unsigned char *)mr->getCurrentParams(),
@@ -331,7 +332,7 @@ uint_fast32_t PropulsionService::getGlobalTime()
         base = MAP_Timer_A_getCounterValue(TIMER_COUNTER);
     } while (_num_oflw != num_oflw);
 
-    return (8 << sizeof(uint16_t))*_num_oflw + ((uint_fast32_t)base);
+    return (1 << (8*sizeof(uint16_t)))*_num_oflw + ((uint_fast32_t)base);
 }
 
 uint_fast32_t PropulsionService::saveGlobalTime(bool now)
@@ -446,8 +447,8 @@ void PropulsionService::sendSavedDataNow()
     fram.read(0, &byteChar, sizeof(unsigned char));
 
     for (unsigned int i = sizeof(unsigned char);
-         (i > sizeof(unsigned char)) && (i < MEM_SIZE) && (byteChar == START_SEQ_BYTE);
-         i += sizeof(unsigned char))
+            (i < MEM_SIZE) && (byteChar == START_SEQ_BYTE);
+            i += sizeof(unsigned char))
     {
         fram.read(i, (unsigned char *)&globalTime, sizeof(const uint_fast32_t));
         i += sizeof(const uint_fast32_t);
@@ -486,9 +487,6 @@ void PropulsionService::sendSavedDataNow()
             fram.read(i, &byteChar, sizeof(unsigned char));
             i += sizeof(unsigned char);
 
-            fram.read(i, (unsigned char *)&globalTime, sizeof(const uint_fast32_t));
-            i += sizeof(const uint_fast32_t);
-
             fram.read(i, (unsigned char *)&reason, sizeof(reason));
             i += sizeof(reason);
 
@@ -496,6 +494,9 @@ void PropulsionService::sendSavedDataNow()
 
             fram.read(i, &byteChar, sizeof(unsigned char));
         }
+
+        if (i == 0)
+            break;
     }
 }
 
