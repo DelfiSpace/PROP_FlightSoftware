@@ -28,12 +28,14 @@ PropulsionService * PropulsionService::prop = nullptr;
 
 volatile uint_fast32_t PropulsionService::num_oflw = 0;
 
+// handler for the virtual 32-bit timer
 void PropulsionService::_handler_timer_overflow()
 {
     MAP_Timer_A_clearInterruptFlag(TIMER_COUNTER);
     ++num_oflw;
 }
 
+// PropulsionService constructor
 PropulsionService::PropulsionService(const char * mrName[], const unsigned int mrConfig[], unsigned int count)
 {
     if (prop != nullptr)
@@ -63,6 +65,7 @@ PropulsionService::PropulsionService(const char * mrName[], const unsigned int m
     }
 }
 
+// PropulsionService destructor
 PropulsionService::~PropulsionService()
 {
     for (unsigned int i = 0; i < num_mr; ++i)
@@ -80,6 +83,7 @@ PropulsionService::~PropulsionService()
     num_oflw = 0;
 }
 
+// Start a micro-resistojet
 bool PropulsionService::startMR(MicroResistojetHandler * myMR, bool save, const unsigned char * config)
 {
     struct MicroResistojetHandler::params_t configMR =
@@ -120,6 +124,7 @@ bool PropulsionService::startMR(MicroResistojetHandler * myMR, bool save, const 
     return ret;
 }
 
+// Handle propulsion request
 bool PropulsionService::operatePropulsion(const unsigned char request, const unsigned char action,
                                           const unsigned char * payload)
 {
@@ -186,6 +191,7 @@ bool PropulsionService::operatePropulsion(const unsigned char request, const uns
     }
 }
 
+// Process propulsion request
 bool PropulsionService::process(DataMessage &command, DataMessage &workingBuffer)
 {
     if (command.getPayload()[0] == PROPULSION_SERVICE)
@@ -201,16 +207,19 @@ bool PropulsionService::process(DataMessage &command, DataMessage &workingBuffer
     return false;
 }
 
+// Get task 1
 Task* PropulsionService::getTask1()
 {
     return task1;
 }
 
+// Get task 2
 Task* PropulsionService::getTask2()
 {
     return task2;
 }
 
+// Save data to FRAM now
 void PropulsionService::saveData()
 {
     if (prop->mr_active == 1)
@@ -244,6 +253,7 @@ void PropulsionService::saveData()
     }
 }
 
+// Handle micro-resistojet action
 void PropulsionService::mrAction(const MicroResistojetHandler * mr)
 {
     prop->reason = mr->getCurrentStatus();
@@ -272,6 +282,7 @@ void PropulsionService::mrAction(const MicroResistojetHandler * mr)
     }
 }
 
+// Start saving data to FRAM
 void PropulsionService::propStart(const MicroResistojetHandler * mr)
 {
     const int_fast64_t min_size = 3*sizeof(unsigned char) + 2*sizeof(const uint_fast32_t) +
@@ -302,6 +313,7 @@ void PropulsionService::propStart(const MicroResistojetHandler * mr)
     }
 }
 
+// Save stop action to FRAM
 uint_fast32_t PropulsionService::recordStop(bool ok)
 {
     saveByte(STOP_SEQ_BYTE);
@@ -316,12 +328,14 @@ uint_fast32_t PropulsionService::recordStop(bool ok)
     return globalTime;
 }
 
+// Save byte to FRAM
 void PropulsionService::saveByte(unsigned char byte)
 {
     fram.write(pos_fram, (unsigned char *)&byte, sizeof(unsigned char));
     pos_fram += sizeof(unsigned char);
 }
 
+// Get 32-bit counter value
 uint_fast32_t PropulsionService::getGlobalTime()
 {
     volatile uint_fast32_t _num_oflw;
@@ -335,6 +349,7 @@ uint_fast32_t PropulsionService::getGlobalTime()
     return (1 << (8*sizeof(uint16_t)))*_num_oflw + ((uint_fast32_t)base);
 }
 
+// Save 32-bit counter value to FRAM
 uint_fast32_t PropulsionService::saveGlobalTime(bool now)
 {
     const uint_fast32_t globalTime = now ? getGlobalTime() : myGlobalTime;
@@ -343,6 +358,7 @@ uint_fast32_t PropulsionService::saveGlobalTime(bool now)
     return globalTime;
 }
 
+// Send FRAM saved data to user through serial port
 void PropulsionService::sendSavedData()
 {
     if (mr_active == 0)
@@ -385,6 +401,7 @@ void PropulsionService::sendSavedData()
     }
 }
 
+// Send count number through serial port
 inline void PropulsionService::sendCount(const unsigned int num_saved_data)
 {
     serial.print(getGlobalTime(), DEC);
@@ -392,11 +409,13 @@ inline void PropulsionService::sendCount(const unsigned int num_saved_data)
     serial.println(num_saved_data, DEC);
 }
 
+// Send count number through serial port
 void PropulsionService::sendCount()
 {
     sendCount(num_saved_data);
 }
 
+// Send start sequence information through serial port
 void PropulsionService::sendStart(const uint_fast32_t globalTime, const char * name,
                                   const struct MicroResistojetHandler::params_t * params)
 {
@@ -413,6 +432,7 @@ void PropulsionService::sendStart(const uint_fast32_t globalTime, const char * n
     serial.println(params->time_spike, DEC);
 }
 
+// Send stop sequence information through serial port
 void PropulsionService::sendStop(const uint_fast32_t globalTime,
                                  const enum MicroResistojetHandler::status_t reason,
                                  bool ok)
@@ -424,12 +444,14 @@ void PropulsionService::sendStop(const uint_fast32_t globalTime,
     serial.println(reason, DEC);
 }
 
+// Send unfinished sequence information through serial port
 void PropulsionService::sendUnfinished()
 {
     serial.print(getGlobalTime(), DEC);
     serial.println(",\"Unfinished\"");
 }
 
+// Send FRAM saved data through serial port now
 void PropulsionService::sendSavedDataNow()
 {
     prop->sendCount();
@@ -500,6 +522,7 @@ void PropulsionService::sendSavedDataNow()
     }
 }
 
+// Erase FRAM
 void PropulsionService::eraseSavedData()
 {
     if (mr_active == 0)
@@ -548,6 +571,7 @@ void PropulsionService::eraseSavedData()
     }
 }
 
+// Save telemetry data to FRAM
 void PropulsionService::saveThisData(PROPTelemetryContainer* tc)
 {
     const int_fast64_t size = 3*sizeof(unsigned char) + 2*sizeof(const uint_fast32_t) +
@@ -569,6 +593,7 @@ void PropulsionService::saveThisData(PROPTelemetryContainer* tc)
     pos_fram += tc->size();
 }
 
+// Send telemetry data through serial port
 void PropulsionService::sendThisData(const uint_fast32_t globalTime, PROPTelemetryContainer* tc)
 {
     int_fast16_t i;
