@@ -195,10 +195,8 @@ bool MicroResistojetHandler::startMR(struct params_t c, bool notify)
     if (!(  c.time_work   >= 1 &&
             c.time_spike  >= 350 &&
             c.time_spike  <= 3800 &&
-            c.time_hold   >= 1 &&
-            c.time_hold   >= (c.time_spike/1000) &&
+            c.time_hold   >= ((c.time_spike+1000-1)/1000) &&
             c.time_hold   <= c.timerPeriod &&
-            c.timerPeriod >= ((c.time_spike+1000-1)/1000) &&
             c.timerPeriod <  2000 &&
             c.time_before <  128 &&
             c.time_work   <  128 &&
