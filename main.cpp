@@ -28,18 +28,22 @@ DSerial serial;
 PingService ping;
 ResetService reset( GPIO_PORT_P4, GPIO_PIN0 );
 HousekeepingService<PROPTelemetryContainer> hk;
-SoftwareUpdateService SWUpdate;
+
+//SoftwareUpdateService SWUpdate;
+
 TestService test;
 const char * names[] = {"LPM", "VLM"};
 const unsigned int configs[] = {0, 1};
 PropulsionService prop(names, configs, NUM_ELEM(names));
-Service* services[] = { &ping, &reset, &hk, &SWUpdate, &test, &prop };
+//Service* services[] = { &ping, &reset, &hk, &SWUpdate, &test, &prop };
+Service* services[] = { &ping, &reset, &hk, &test, &prop };
 
 // PROP board tasks
 CommandHandler<PQ9Frame> cmdHandler(pq9bus, services, NUM_ELEM(services));
-Task timerTask(periodicTask);
-Task* periodicTasks[] = {&timerTask};
-PeriodicTaskNotifier periodicNotifier = PeriodicTaskNotifier(FCLOCK, periodicTasks, NUM_ELEM(periodicTasks));
+PeriodicTask timerTask(2, periodicTask); //flash LED 5 times per second
+PeriodicTask* periodicTasks[] = {&timerTask};
+PeriodicTaskNotifier taskNotifier = PeriodicTaskNotifier(periodicTasks, 1);
+
 Task* tasks[] = { &cmdHandler, &timerTask, prop.getTask1(), prop.getTask2() };
 
 // system uptime
