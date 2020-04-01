@@ -21,7 +21,6 @@
 
 #define SEND_DATA_NOW 0xFF
 
-extern DSerial serial;
 extern MB85RS fram;
 
 PropulsionService * PropulsionService::prop = nullptr;
@@ -99,26 +98,18 @@ bool PropulsionService::startMR(MicroResistojetHandler * myMR, bool save, const 
     bool ret = myMR->startMR(configMR, save);
 
     const char * name = myMR->getName();
-    if (name) serial.print(name);
-    serial.print(" - ");
+    if (name){
+        Console::log("%s - ", name);
+    }
 
     if (ret)
     {
-        serial.print("Started with timer period ");
-        serial.print(configMR.timerPeriod, DEC);
-        serial.print(" ms, hold time ");
-        serial.print(configMR.time_hold, DEC);
-        serial.print(" ms and spike time ");
-        serial.print(configMR.time_spike/1000, DEC);
-        serial.print(".");
-        serial.print((configMR.time_spike/100)%10, DEC);
-        serial.print((configMR.time_spike/10)%10, DEC);
-        serial.print(configMR.time_spike%10, DEC);
-        serial.println(" ms");
+        Console::log("Started with timer period %d ms, hold time %d ms and spike time %d.%d%d%d ms",
+                     configMR.timerPeriod, configMR.time_hold, configMR.time_spike/1000, configMR.time_spike/100, configMR.time_spike/10, configMR.time_spike%10);
     }
     else
     {
-        serial.println("Wrong inputs");
+        Console::log("Wrong inputs");
     }
 
     return ret;
@@ -135,7 +126,7 @@ bool PropulsionService::operatePropulsion(const unsigned char request, const uns
     }
 
 
-    serial.println("PropulsionService: Request");
+    Console::log("PropulsionService: Request");
 
     MicroResistojetHandler * myMR;
 
@@ -146,13 +137,14 @@ bool PropulsionService::operatePropulsion(const unsigned char request, const uns
 
             if (myMR == nullptr)
             {
-                serial.println("Nothing to stop");
+                Console::log("Nothing to stop");
             }
             else
             {
                 const char * name = myMR->getName();
-                if (name) serial.print(name);
-                serial.println(" - Stopped");
+                if (name){
+                    Console::log("%s - Stopped", name);
+                }
             }
             return true;
 
@@ -164,29 +156,28 @@ bool PropulsionService::operatePropulsion(const unsigned char request, const uns
             switch (payload[0])
             {
                 case 0: // SEND
-                    serial.println("Sending saved data...");
+                    Console::log("Sending saved data...");
                     sendSavedData();
-                    serial.println("All data sent.");
+                    Console::log("All data sent.");
                     return true;
 
                 case 1: // COUNT
-                    serial.print("Number of sequences saved: ");
-                    serial.println(num_saved_data, DEC);
+                    Console::log("Number of sequences saved: %d", num_saved_data);
                     return true;
 
                 case 2: // ERASE
-                    serial.println("Erasing saved data...");
+                    Console::log("Erasing saved data...");
                     eraseSavedData();
-                    serial.println("All data erased.");
+                    Console::log("All data erased.");
                     return true;
 
                 default:
-                    serial.println("Wrong FRAM action");
+                    Console::log("Wrong FRAM action");
                     return false;
             }
 
         default:
-            serial.println("Wrong action");
+            Console::log("Wrong action");
             return false;
     }
 }
@@ -404,9 +395,7 @@ void PropulsionService::sendSavedData()
 // Send count number through serial port
 inline void PropulsionService::sendCount(const unsigned int num_saved_data)
 {
-    serial.print(getGlobalTime(), DEC);
-    serial.print(",\"Count\",");
-    serial.println(num_saved_data, DEC);
+    Console::log("%d,\"Count\",%d",getGlobalTime(), num_saved_data);
 }
 
 // Send count number through serial port
@@ -419,17 +408,12 @@ void PropulsionService::sendCount()
 void PropulsionService::sendStart(const uint_fast32_t globalTime, const char * name,
                                   const struct MicroResistojetHandler::params_t * params)
 {
-    serial.print(globalTime, DEC);
-    serial.print(",\"Start\",\"");
-    if (name) serial.print(name);
-    serial.print("\",");
+    Console::log("%d,\"Start\",\"", globalTime);
+    if (name) {
+        Console::log(name);
+    };
 
-    serial.print(params->time_work,    DEC); serial.print(',');
-    serial.print(params->time_before,  DEC); serial.print(',');
-    serial.print(params->duty_c_heat,  DEC); serial.print(',');
-    serial.print(params->timerPeriod,  DEC); serial.print(',');
-    serial.print(params->time_hold,    DEC); serial.print(',');
-    serial.println(params->time_spike, DEC);
+    Console::log("\",%d,%d,%d,%d,%d,%d",params->time_work,params->time_before,params->duty_c_heat,params->timerPeriod,params->time_hold,params->time_spike);
 }
 
 // Send stop sequence information through serial port
@@ -437,18 +421,13 @@ void PropulsionService::sendStop(const uint_fast32_t globalTime,
                                  const enum MicroResistojetHandler::status_t reason,
                                  bool ok)
 {
-    serial.print(globalTime, DEC);
-    serial.print(",\"Stop\",\"");
-    serial.print(ok ? "OK" : "FULL");
-    serial.print("\",");
-    serial.println(reason, DEC);
+    Console::log("%d,\"Stop\",\"%s\",%d",globalTime,ok ? "OK" : "FULL",reason);
 }
 
 // Send unfinished sequence information through serial port
 void PropulsionService::sendUnfinished()
 {
-    serial.print(getGlobalTime(), DEC);
-    serial.println(",\"Unfinished\"");
+    Console::log("%d,\"Unfinished\"",getGlobalTime());
 }
 
 // Send FRAM saved data through serial port now
@@ -580,7 +559,7 @@ void PropulsionService::saveThisData(PROPTelemetryContainer* tc)
     if (size > (MEM_SIZE-((int_fast64_t)pos_fram)))
     {
         //throw "Not enough FRAM!";
-        serial.println("Not enough FRAM! Not saving data until FRAM erased");
+        Console::log("Not enough FRAM! Not saving data until FRAM erased");
         recordStop(false);
         return;
     }
@@ -598,56 +577,21 @@ void PropulsionService::sendThisData(const uint_fast32_t globalTime, PROPTelemet
 {
     int_fast16_t i;
 
-    serial.print(globalTime, DEC); serial.print(',');
-
-    serial.print(tc->getUpTime(), DEC); serial.print(',');
-
-    serial.print(tc->getBusStatus(),  DEC); serial.print(',');
-    serial.print(tc->getBusVoltage(), DEC); serial.print(',');
-    i = tc->getBusCurrent();
-    if (i < 0)
-    {
-        serial.print('-');
-        i = -i;
-    }
-    serial.print(i, DEC); serial.print(',');
-
-    serial.print(tc->getValveHoldStatus(),  DEC); serial.print(',');
-    serial.print(tc->getValveHoldVoltage(), DEC); serial.print(',');
-    i = tc->getValveHoldCurrent();
-    if (i < 0)
-    {
-        serial.print('-');
-        i = -i;
-    }
-    serial.print(i, DEC); serial.print(',');
-
-    serial.print(tc->getValveSpikeStatus(),  DEC); serial.print(',');
-    serial.print(tc->getValveSpikeVoltage(), DEC); serial.print(',');
-    i = tc->getValveSpikeCurrent();
-    if (i < 0)
-    {
-        serial.print('-');
-        i = -i;
-    }
-    serial.print(i, DEC); serial.print(',');
-
-    serial.print(tc->getHeatersStatus(),  DEC); serial.print(',');
-    serial.print(tc->getHeatersVoltage(), DEC); serial.print(',');
-    i = tc->getHeatersCurrent();
-    if (i < 0)
-    {
-        serial.print('-');
-        i = -i;
-    }
-    serial.print(i, DEC); serial.print(',');
-
-    serial.print(tc->getTmpStatus(), DEC); serial.print(',');
-    i = tc->getTemperature();
-    if (i < 0)
-    {
-        serial.print('-');
-        i = -i;
-    }
-    serial.println(i, DEC);
+    Console::log("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
+                 globalTime,
+                 tc->getUpTime(),
+                 tc->getBusStatus(),
+                 tc->getBusVoltage(),
+                 tc->getBusCurrent(),
+                 tc->getValveHoldStatus(),
+                 tc->getValveHoldVoltage(),
+                 tc->getValveHoldCurrent(),
+                 tc->getValveSpikeStatus(),
+                 tc->getValveSpikeVoltage(),
+                 tc->getValveSpikeCurrent(),
+                 tc->getHeatersStatus(),
+                 tc->getHeatersVoltage(),
+                 tc->getHeatersCurrent(),
+                 tc->getTmpStatus(),
+                 tc->getTemperature());
 }

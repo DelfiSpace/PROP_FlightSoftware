@@ -21,9 +21,6 @@ TMP100 temp(I2Cinternal, 0x48);
 // CDHS bus handler
 PQ9Bus pq9bus(3, GPIO_PORT_P9, GPIO_PIN0);
 
-// debug console handler
-DSerial serial;
-
 // services running in the system
 PingService ping;
 ResetService reset( GPIO_PORT_P4, GPIO_PIN0 );
@@ -136,7 +133,7 @@ void main(void)
 
     temp.init();
 
-    serial.begin( );                        // baud rate: 9600 bps
+    Console::init( 115200 );                // baud rate: 115200 bps
     pq9bus.begin(115200, PROP_ADDRESS);     // baud rate: 115200 bps
                                             // address PROP (6)
 
@@ -157,7 +154,7 @@ void main(void)
     //cmdHandler.onValidCommand([]{ reset.kickInternalWatchDog(); });
     cmdHandler.onValidCommand(&validCmd);
 
-    serial.println("PROP booting...");
+    Console::log("PROP booting...");
 
     TaskManager::start(tasks, NUM_ELEM(tasks));
 }

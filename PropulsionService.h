@@ -9,7 +9,7 @@
 #define PROPULSIONSERVICE_H_
 
 #include "PROP.h"
-#include "Service.h"
+#include "Console.h"
 #include "Task.h"
 #include "PropTelemetryContainer.h"
 #include "MicroResistojetHandler.h"
