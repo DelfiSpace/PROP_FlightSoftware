@@ -6,7 +6,6 @@
  */
 
 #include "PropulsionService.h"
-#include "DSerial.h"
 #include "MB85RS.h"
 
 #define NUM_ELEM(x) (sizeof(x)/sizeof(x[0]))
