@@ -9,6 +9,9 @@ DWire I2Cinternal(0);
 DSPI spi(3);
 MB85RS fram(spi, GPIO_PORT_P1, GPIO_PIN0);
 
+// HardwareMonitor
+HWMonitor hwMonitor(&fram);
+
 // voltage / current sensors
 INA226 powerBus(I2Cinternal, 0x40);
 INA226 valveHold(I2Cinternal, 0x41);
@@ -80,6 +83,7 @@ void acquireTelemetry(PROPTelemetryContainer *tc)
 
     // set uptime in telemetry
     tc->setUpTime(uptime);
+    //tc->setMCUTemperature(hwMonitor.getMCUTemp());
 
     // measure the board
     tc->setBusStatus((!powerBus.getVoltage(v)) & (!powerBus.getCurrent(i)));
@@ -116,6 +120,12 @@ void main(void)
     // - clock tree
     DelfiPQcore::initMCU();
 
+    // initialize the ADC
+    // - ADC14 and FPU Module
+    // - MEM0 for internal temperature measurements
+    ADCManager::initADC();
+
+
     // Initialize I2C master
     I2Cinternal.setFastMode();
     I2Cinternal.begin();
@@ -142,6 +152,10 @@ void main(void)
     // - initialize the pins for the hardware watch-dog
     // - prepare the pin for power cycling the system
     reset.init();
+
+    // initialize HWMonitor readings
+    hwMonitor.readResetStatus();
+    hwMonitor.readCSStatus();
 
     // link the command handler to the PQ9 bus:
     // every time a new command is received, it will be forwarded to the command handler

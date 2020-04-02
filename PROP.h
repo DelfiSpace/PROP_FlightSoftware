@@ -32,6 +32,8 @@
 #include "TestService.h"
 #include "PropulsionService.h"
 #include "PeriodicTaskNotifier.h"
+#include "HWMonitor.h"
+#include "ADCManager.h"
 
 #define FCLOCK 48000000
 
