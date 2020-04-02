@@ -40,7 +40,7 @@ Service* services[] = { &ping, &reset, &hk, &test, &prop };
 
 // PROP board tasks
 CommandHandler<PQ9Frame> cmdHandler(pq9bus, services, NUM_ELEM(services));
-PeriodicTask timerTask(2, periodicTask); //flash LED 5 times per second
+PeriodicTask timerTask(1000, periodicTask);
 PeriodicTask* periodicTasks[] = {&timerTask};
 PeriodicTaskNotifier taskNotifier = PeriodicTaskNotifier(periodicTasks, 1);
 
