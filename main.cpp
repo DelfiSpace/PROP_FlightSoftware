@@ -153,6 +153,9 @@ void main(void)
     // - prepare the pin for power cycling the system
     reset.init();
 
+    // initialize Task Notifier
+    taskNotifier.init();
+
     // initialize HWMonitor readings
     hwMonitor.readResetStatus();
     hwMonitor.readCSStatus();
