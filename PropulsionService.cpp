@@ -184,11 +184,12 @@ bool PropulsionService::operatePropulsion(const unsigned char request, const uns
 // Process propulsion request
 bool PropulsionService::process(DataMessage &command, DataMessage &workingBuffer)
 {
-    if (command.getPayload()[0] == PROPULSION_SERVICE)
+    if (command.getService() == PROPULSION_SERVICE)
     {
-        workingBuffer.setSize(2);
-        workingBuffer.getPayload()[0] = PROPULSION_SERVICE;
-        workingBuffer.getPayload()[1] = operatePropulsion(command.getPayload()[1],
+        workingBuffer.setService(PROPULSION_SERVICE);
+        workingBuffer.setMessageType(SERVICE_RESPONSE_REPLY);
+        workingBuffer.setPayloadSize(1);
+        workingBuffer.getDataPayload()[0] = operatePropulsion(command.getPayload()[1],
                                                           command.getPayload()[2],
                                                           &command.getPayload()[3]) ?
                 SERVICE_RESPONSE_REPLY : SERVICE_RESPONSE_ERROR;
