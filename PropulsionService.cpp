@@ -152,28 +152,34 @@ bool PropulsionService::operatePropulsion(const unsigned char request, const uns
 
 
         case 2: // FRAM
+            bool retCode;
             switch (payload[0])
             {
                 case 0: // SEND
                     Console::log("Sending saved data...");
                     sendSavedData();
                     Console::log("All data sent.");
-                    return true;
+                    retCode = true;
+                    break;
 
                 case 1: // COUNT
                     Console::log("Number of sequences saved: %d", num_saved_data);
-                    return true;
+                    retCode = true;
+                    break;
 
                 case 2: // ERASE
                     Console::log("Erasing saved data...");
                     eraseSavedData();
                     Console::log("All data erased.");
-                    return true;
+                    retCode = true;
+                    break;
 
                 default:
                     Console::log("Wrong FRAM action");
-                    return false;
+                    retCode = false;
+                    break;
             }
+            return retCode;
 
         default:
             Console::log("Wrong action");
@@ -575,7 +581,6 @@ void PropulsionService::saveThisData(PROPTelemetryContainer* tc)
 // Send telemetry data through serial port
 void PropulsionService::sendThisData(const uint_fast32_t globalTime, PROPTelemetryContainer* tc)
 {
-    int_fast16_t i;
 
     Console::log("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
                  globalTime,
